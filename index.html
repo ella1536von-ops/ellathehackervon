@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CyberRange Academy</title>
+<meta name="theme-color" content="#0b0e14">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<style>
+:root{--bg:#0b0e14;--elev:#141a24;--sub:#1b2330;--bd:#2a3342;--bd2:#1f2733;--tx:#e6edf3;--tx2:#9aa7b8;--tx3:#6b7684;--acc:#4aa3ff;--accsub:#122238;--dng:#f08a8a;--dngsub:#2a1618;--suc:#5ad18a;--sucsub:#13261b;--wrn:#f2c14e;--wrnsub:#2a2410;--on:#071019;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+[data-theme="light"]{--bg:#f6f7f9;--elev:#ffffff;--sub:#eef1f5;--bd:#d6dbe3;--bd2:#e3e8ef;--tx:#10151c;--tx2:#44505f;--tx3:#74808f;--acc:#1f6feb;--accsub:#e7f0ff;--dng:#c23b3b;--dngsub:#fdeaea;--suc:#1a9a52;--sucsub:#e7f7ee;--wrn:#9a6b12;--wrnsub:#fdf3dd;--on:#ffffff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+.wrap{max-width:1000px;margin:0 auto;padding:20px}
+h1{font-size:26px;margin:0}
+h2{font-size:20px;margin:0}
+h3{font-size:16px;margin:0}
+p{margin:0}
+.muted{color:var(--tx3);font-size:13px}
+.sec{color:var(--tx2)}
+.card{background:var(--elev);border:1px solid var(--bd);border-radius:12px;padding:16px}
+.subcard{background:var(--sub);border:1px solid var(--bd2);border-radius:8px;padding:12px}
+.col{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.chip{font-size:12px;font-weight:600;border-radius:999px;padding:2px 10px;white-space:nowrap;display:inline-block}
+button{font-family:inherit}
+.btn{font-size:14px;font-weight:600;border-radius:999px;padding:8px 14px;cursor:pointer;border:1px solid var(--bd);background:var(--sub);color:var(--tx2)}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:var(--on)}
+.btn.active{background:var(--acc);border-color:var(--acc);color:var(--on)}
+.opt{display:block;width:100%;text-align:left;font-size:15px;color:var(--tx);background:var(--sub);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;cursor:pointer;margin-bottom:8px}
+.opt.ok{background:var(--sucsub);border-color:var(--suc)}
+.opt.err{background:var(--dngsub);border-color:var(--dng)}
+.opt.dim{color:var(--tx3)}
+pre{font-family:var(--mono);font-size:13px;white-space:pre-wrap;color:var(--tx);background:var(--bg);border:1px solid var(--bd2);border-radius:8px;padding:12px;margin:0;overflow-x:auto}
+input[type=text]{font-family:inherit;font-size:15px;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+.term{font-family:var(--mono);font-size:13px;flex:1 1 220px;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+.bar{height:10px;width:100%;background:var(--sub);border-radius:999px;overflow:hidden}
+.bar>div{height:100%}
+.labcard{text-align:left;cursor:pointer;background:var(--elev);border:1px solid var(--bd);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;width:100%}
+.labcard.done{border-color:var(--suc)}
+.fb{border-radius:8px;padding:12px;border:1px solid var(--bd)}
+.fb.ok{background:var(--sucsub);border-color:var(--suc);color:var(--suc)}
+.fb.err{background:var(--dngsub);border-color:var(--dng);color:var(--dng)}
+.tog{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.sw{width:38px;height:22px;border-radius:999px;background:var(--bd);position:relative;transition:.15s}
+.sw.on{background:var(--acc)}
+.sw>span{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.15s}
+.sw.on>span{left:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+<div><h1>CyberRange Academy</h1><p class="sec" id="subtitle" style="margin-top:4px"></p></div>
+<button class="btn" data-action="theme">Toggle light/dark</button>
+</div>
+<div id="levelup"></div>
+<div class="row" id="nav" style="margin:16px 0 18px"></div>
+<div id="content" class="col"></div>
+</div>
+<script>
+"use strict";
+var DATA = {
+ranks:[{name:"Recruit",min:0},{name:"Cadet",min:100},{name:"Operative",min:250},{name:"Agent",min:500},{name:"Specialist",min:900},{name:"Commander",min:1400},{name:"Legend",min:2200}],
+levels:["Script Kiddie / Novice","Apprentice","Operator","Specialist","Elite","Legend"],
+quiz:[
+{topic:"Networking",diff:"Beginner",q:"Which TCP flags make up the three-way handshake?",options:["SYN, SYN-ACK, ACK","GET, POST, PUT","PING, PONG, ECHO","FIN, RST, URG"],correct:0,explain:"A TCP connection opens with SYN, then SYN-ACK from the server, then ACK from the client."},
+{topic:"Networking",diff:"Beginner",q:"Which port does HTTPS use by default?",options:["21","80","443","3389"],correct:2,explain:"HTTPS runs on TCP 443. HTTP is 80, FTP 21, RDP 3389."},
+{topic:"Web security",diff:"Beginner",q:"The input ' OR '1'='1 in a login box is a classic example of what?",options:["Cross-site scripting","SQL injection","Buffer overflow","DNS poisoning"],correct:1,explain:"It is SQL injection: the input changes the WHERE clause so it is always true."},
+{topic:"Passwords and auth",diff:"Intermediate",q:"What is the recommended way to store user passwords?",options:["Plaintext in the database","MD5 with no salt","A slow salted hash such as bcrypt or argon2","Base64 encoding"],correct:2,explain:"Use a slow, salted, adaptive hash (bcrypt, scrypt, argon2). Base64 is encoding, MD5 is far too fast."},
+{topic:"Phishing",diff:"Beginner",q:"A link reads https://paypa1.com instead of paypal.com. What technique is this?",options:["Typosquatting / lookalike domain","Port scanning","Privilege escalation","Fuzzing"],correct:0,explain:"Swapping an l for a 1 is a lookalike / typosquatting domain, a common phishing trick."},
+{topic:"Malware",diff:"Beginner",q:"What does ransomware primarily do?",options:["Mines cryptocurrency silently","Encrypts files and demands payment to unlock them","Logs keystrokes only","Sends spam from your mailbox"],correct:1,explain:"Ransomware encrypts the victim's data and demands payment for the decryption key."},
+{topic:"Logs / SIEM",diff:"Intermediate",q:"What is a SIEM mainly used for?",options:["Hosting websites","Collecting and correlating logs and alerts across systems","Encrypting disks","Assigning IP addresses"],correct:1,explain:"A SIEM aggregates logs from many sources and correlates them into alerts."},
+{topic:"Incident response",diff:"Intermediate",q:"Which ordering reflects the core incident-response lifecycle?",options:["Recover, Contain, Prepare, Detect","Prepare, Detect, Contain, Eradicate, Recover","Detect, Pay, Ignore, Recover","Eradicate, Prepare, Detect, Contain"],correct:1,explain:"NIST-style IR runs Preparation, Detection, Containment, Eradication, Recovery, then Lessons Learned."},
+{topic:"Cryptography",diff:"Intermediate",q:"Which uses a public/private key pair?",options:["Symmetric encryption","Asymmetric encryption","Hashing","Base64"],correct:1,explain:"Asymmetric (public-key) crypto uses a key pair. Symmetric uses one shared secret key."},
+{topic:"Linux commands",diff:"Intermediate",q:"Which command lists listening TCP sockets with their processes?",options:["ls -la","ss -tlnp","chmod 777","cat /etc/passwd"],correct:1,explain:"ss -tlnp (or netstat -tlnp) shows listening TCP ports and the owning process."},
+{topic:"Web security",diff:"Advanced",q:"Why is putting a session token in the URL risky?",options:["URLs cannot hold tokens","It leaks via browser history, server logs and the Referer header","It makes the page load slower","It is always blocked by firewalls"],correct:1,explain:"Tokens in URLs end up in logs, history and the Referer header. Keep them in secure httpOnly cookies."},
+{topic:"Networking",diff:"Advanced",q:"What does a reverse shell do?",options:["The attacker connects inbound to the victim","The victim connects outbound back to the attacker","It reverses DNS records","It reboots the server"],correct:1,explain:"In a reverse shell the compromised host dials out to the attacker, often bypassing inbound firewall rules."},
+{topic:"Cryptography",diff:"Intermediate",q:"How does hashing differ from encryption?",options:["Hashing is reversible with a key","Hashing is one-way and not meant to be reversed","They are identical","Hashing always compresses data to 8 bytes"],correct:1,explain:"A hash is one-way: you cannot recover the input. Encryption is reversible with the right key."},
+{topic:"Passwords and auth",diff:"Beginner",q:"What does multi-factor authentication (MFA) mainly protect against?",options:["Slow networks","Stolen or reused passwords","Disk failure","High CPU usage"],correct:1,explain:"MFA adds a second factor, so a stolen password alone is not enough to log in."},
+{topic:"Linux / privesc",diff:"Advanced",q:"How can a misconfigured SUID binary lead to privilege escalation?",options:["It changes the screen resolution","It runs as its file owner (often root), so abuse can grant elevated privileges","It disables the firewall automatically","It only affects printing"],correct:1,explain:"A SUID binary executes with the owner's privileges. If owned by root and abusable, a low user can gain root."},
+{topic:"Web security",diff:"Intermediate",q:"What does CSRF (cross-site request forgery) abuse?",options:["The browser automatically sending a user's cookies with requests","Weak password hashing","Open SSH ports","DNS caching"],correct:0,explain:"CSRF rides on the browser auto-attaching session cookies, making the victim send an unwanted authenticated request."},
+{topic:"Web security",diff:"Advanced",q:"IDOR (insecure direct object reference) is best described as...",options:["Reading another user's object by changing an ID with no authorization check","A denial of service","A phishing kit","A type of firewall"],correct:0,explain:"IDOR is accessing resources you should not by tampering with an identifier because the server does not check ownership."},
+{topic:"Networking",diff:"Intermediate",q:"What is a VLAN primarily used for?",options:["Encrypting email","Segmenting a network into isolated broadcast domains","Cracking passwords","Serving DNS"],correct:1,explain:"VLANs logically segment a network, limiting broadcast scope and helping contain lateral movement."},
+{topic:"Cryptography",diff:"Intermediate",q:"What does TLS provide for a connection?",options:["Only faster speed","Confidentiality, integrity and server authentication","Free certificates only","Password storage"],correct:1,explain:"TLS encrypts traffic (confidentiality), detects tampering (integrity) and authenticates the server via certificates."},
+{topic:"Malware",diff:"Advanced",q:"What is a rootkit?",options:["A password manager","Malware that hides its presence with deep, often kernel-level access","A type of firewall rule","A backup tool"],correct:1,explain:"A rootkit burrows deep into the system to conceal processes, files and network activity from defenders."},
+{topic:"Linux commands",diff:"Intermediate",q:"What do the permissions 644 mean?",options:["rwxrwxrwx","rw-r--r--","r--r--r--","rwxr-xr-x"],correct:1,explain:"644 is owner read/write, group read, others read: rw-r--r--."},
+{topic:"Logs / SIEM",diff:"Beginner",q:"What is an IOC (indicator of compromise)?",options:["A firewall vendor","An artifact like a malicious IP, hash or domain that signals a breach","A password policy","A backup schedule"],correct:1,explain:"IOCs are concrete artifacts (IPs, hashes, domains, filenames) others can hunt for to find the same threat."},
+{topic:"Incident response",diff:"Intermediate",q:"What is the purpose of a tabletop exercise?",options:["To patch servers automatically","To rehearse the response to an incident without a real one happening","To scan for open ports","To rotate passwords"],correct:1,explain:"A tabletop walks the team through a hypothetical incident to test decisions and the plan safely."},
+{topic:"Phishing",diff:"Intermediate",q:"What is spear phishing?",options:["Mass spam to millions","A targeted phishing attack crafted for a specific person or org","A port scan","A type of ransomware"],correct:1,explain:"Spear phishing is tailored to a specific target using personal or company details to boost credibility."},
+{topic:"Passwords and auth",diff:"Intermediate",q:"What is the principle of least privilege?",options:["Give everyone admin for speed","Grant each user or service only the access it needs and no more","Disable all accounts","Share one password"],correct:1,explain:"Least privilege limits accounts to the minimum access required, shrinking the blast radius of a compromise."},
+{topic:"Web security",diff:"Advanced",q:"What is the main risk of SSRF (server-side request forgery)?",options:["The server can be tricked into making requests to internal systems","The client crashes","Slower page loads","Weaker passwords"],correct:0,explain:"SSRF makes the server fetch attacker-chosen URLs, often reaching internal metadata or services behind the firewall."},
+{topic:"Networking",diff:"Beginner",q:"Which protocol resolves domain names to IP addresses?",options:["DNS","SMTP","SNMP","SSH"],correct:0,explain:"DNS translates human-readable domain names into IP addresses."},
+{topic:"Cryptography",diff:"Advanced",q:"Why use a unique nonce or IV when encrypting?",options:["To make keys shorter","So identical plaintexts do not produce identical ciphertexts","To speed up hashing","To disable TLS"],correct:1,explain:"A unique IV/nonce ensures the same plaintext encrypts differently each time, preventing pattern leakage."},
+{topic:"Linux / privesc",diff:"Expert",q:"A SUID-root binary calls system(\"ls\") with a relative path. What attack does this enable?",options:["PATH hijacking by placing a malicious ls earlier in PATH","Buffer overflow only","DNS poisoning","Nothing"],correct:0,explain:"With a relative command the attacker puts a malicious ls in a writable PATH dir, which runs as root."},
+{topic:"Defense",diff:"Advanced",q:"What does network segmentation primarily limit?",options:["Disk usage","An attacker's lateral movement between systems","Email volume","CPU temperature"],correct:1,explain:"Segmentation isolates systems so a foothold in one zone cannot freely reach the rest of the network."}
+],
+labs:[
+{id:"red-recon",side:"red",title:"Recon: map the attack surface",diff:"Beginner",reward:25,badge:"Recon Ranger",brief:"Target: Globex Corp, host 192.0.2.10 (fictional). Enumerate open services, then decide what is most exposed. All simulated.",steps:[
+{kind:"terminal",prompt:"Scan the host for open ports and services.",placeholder:"e.g. nmap -sV 192.0.2.10",accept:["nmap"],output:"Starting Nmap scan against 192.0.2.10 (globex.example)\nHost is up (0.012s latency).\nPORT     STATE SERVICE VERSION\n22/tcp   open  ssh     OpenSSH 7.2\n80/tcp   open  http    Apache httpd 2.4.18\n3306/tcp open  mysql   MySQL 5.7.21\n8080/tcp open  http    Jetty 9.2 (admin console)",ok:"Scan complete. Four services are exposed.",hint:"The standard tool for port and service discovery starts with nmap."},
+{kind:"choice",question:"Which exposed service is the biggest red flag on the public internet?",options:["22/tcp SSH","80/tcp HTTP","3306/tcp MySQL","8080/tcp admin console"],correct:2,explain:"A database (MySQL 3306) should never face the internet directly. The 8080 admin console is also risky.",hint:"Which of these should a user never reach directly from outside?"},
+{kind:"choice",question:"Your next recon move against the web services should be to...",options:["Delete the server","Fingerprint versions and look for known CVEs in Apache 2.4.18 and Jetty 9.2","Email the admin","Reboot your laptop"],correct:1,explain:"Recon continues by version-fingerprinting and checking versions against known vulnerabilities.",hint:"Recon gathers detail, not action yet."}
+],debrief:"How defenders stop this: close unused ports, never expose databases or admin consoles, put services behind a VPN or allowlist, patch versions, and watch for scan patterns in the IDS."},
+{id:"red-sqli",side:"red",title:"SQL injection: bypass a login",diff:"Intermediate",reward:35,badge:"Injection Master",brief:"A fake shop builds its login query by concatenation: SELECT * FROM users WHERE user='INPUT' AND pass='INPUT'. Craft input that logs you in without the password (teaching example only).",steps:[
+{kind:"terminal",prompt:"Type a username payload that makes the WHERE clause always true.",placeholder:"e.g. admin' OR '1'='1",accept:["'1'='1","1=1","or 1","or '1"],output:"Executed: SELECT * FROM users WHERE user='admin' OR '1'='1' AND pass=''\nRows returned: 1\nLogin bypassed. Welcome, admin (simulated).",ok:"The injected OR made the condition always true. Access granted.",hint:"Close the quote and add an always-true condition, like  ' OR '1'='1"},
+{kind:"choice",question:"Why did the bypass work?",options:["The password was blank","User input was concatenated straight into the SQL instead of parameterized","The server was offline","MySQL has no passwords"],correct:1,explain:"The app glued raw input into the query, so your quote and OR became part of the SQL logic.",hint:"Think about how the input became part of the query itself."},
+{kind:"choice",question:"What is the correct fix?",options:["Hide the login page","Use parameterized queries / prepared statements and least-privilege DB accounts","Rename the users table","Trust client-side validation only"],correct:1,explain:"Parameterized queries keep data separate from code, so input can never change the query structure.",hint:"The fix separates the data from the SQL command."}
+],debrief:"How defenders stop this: prepared statements everywhere, allowlist input, least-privilege DB, a WAF, and alerting on SQL errors."},
+{id:"red-xss",side:"red",title:"Reflected XSS in a search page",diff:"Intermediate",reward:35,badge:"XSS Hunter",brief:"A fake search page echoes your query straight into the HTML with no encoding: 'Results for: INPUT'. Prove it is vulnerable with a harmless script (simulated only).",steps:[
+{kind:"terminal",prompt:"Enter a search term that would execute script if reflected unencoded.",placeholder:"e.g. <script>alert(1)<\/script>",accept:["<script","onerror=","<img","alert("],output:"Page rendered: Results for: <script>alert(1)<\/script>\nBrowser parsed the tag as HTML.\n[simulated] alert box fired in the victim's session.",ok:"Your input was reflected as live HTML, so the script executed. That is reflected XSS.",hint:"A simple proof uses a script tag with an alert, such as <script>alert(1)<\/script>."},
+{kind:"choice",question:"Which type of XSS is this?",options:["Stored XSS","Reflected XSS","DOM clobbering","CSRF"],correct:1,explain:"Reflected: the payload comes in on the request and is echoed back in the response, not saved server-side.",hint:"The payload was echoed back immediately from your request."},
+{kind:"choice",question:"Best primary defense?",options:["Context-aware output encoding, plus a Content-Security-Policy","Disable JavaScript for all users","Hide the search box","Use a longer URL"],correct:0,explain:"Encode output for its context so input can never become markup, and add CSP as defense in depth.",hint:"The core fix changes how output is written back to the page."}
+],debrief:"How defenders stop this: context-aware output encoding, a strict CSP, httpOnly cookies, and sanitizing rich input with a vetted library."},
+{id:"red-crack",side:"red",title:"Crack a weak password hash",diff:"Intermediate",reward:35,badge:"Cracked It",brief:"You captured an unsalted MD5 hash: e10adc3949ba59abbe56e057f20f883e. Wordlist: password, 123456, qwerty, letmein, dragon. Identify and crack it (simulated).",steps:[
+{kind:"choice",question:"The hash is 32 hex characters. Which algorithm is it most likely?",options:["SHA-256","bcrypt","MD5","AES"],correct:2,explain:"32 hex chars (128 bits) with no $ prefix is the classic shape of an MD5 hash.",hint:"32 hex characters equals 128 bits."},
+{kind:"terminal",prompt:"Run a wordlist attack against the hash.",placeholder:"e.g. hashcat -m 0 hash.txt wordlist.txt",accept:["hashcat","john","crack"],output:"[simulated] Hashing wordlist with MD5...\npassword  -> 5f4dcc3b5aa765d61d8327deb882cf99  (no match)\n123456    -> e10adc3949ba59abbe56e057f20f883e  (MATCH)\nCracked: 123456",ok:"Matched on the second entry. The plaintext is 123456.",hint:"Common cracking tools are hashcat or john."},
+{kind:"choice",question:"Why would salting plus bcrypt/argon2 have defeated this?",options:["They make the hash shorter","A unique salt kills rainbow tables, and slow hashing makes brute force impractical","They hide the username","They encrypt the whole disk"],correct:1,explain:"Per-user salts make rainbow tables useless, and bcrypt/argon2 are deliberately slow, so guessing at scale fails.",hint:"Think about speed of hashing and reuse of precomputed tables."}
+],debrief:"How defenders stop this: never use fast unsalted hashes, enforce strong unique passwords and MFA, store with bcrypt/argon2 and salts, and watch for credential stuffing."},
+{id:"red-phish",side:"red",title:"Phishing pretext analysis",diff:"Beginner",reward:25,badge:"Phish Spotter",brief:"Study a social-engineering pretext and identify what makes it effective.",evidence:"From: \"IT Helpdesk\" <it-support@globex-it.example>\nTo: j.ramos@globex.example\nSubject: ACTION REQUIRED: reset your password within 1 hour\nBody: Unusual activity detected. Verify your credentials now at\nhttp://globex-it.example.verify-now.test or your account will be locked.",steps:[
+{kind:"choice",question:"Which psychological lever is the pretext leaning on hardest?",options:["Curiosity","Urgency and fear of lockout","Flattery","Reciprocity"],correct:1,explain:"The one-hour deadline and lock threat create urgency and fear, pushing the target to act before thinking.",hint:"What is the deadline and threat designed to make you feel?"},
+{kind:"choice",question:"What is the strongest technical giveaway?",options:["It has a subject line","The link host is verify-now.test, not the real corporate domain","It is addressed to a person","It mentions a password"],correct:1,explain:"The real host is verify-now.test, an attacker-controlled lookalike; the corporate name is just a subdomain label.",hint:"Read the link host right to left to find the real domain."}
+],debrief:"How defenders stop this: user training on urgency cues, hover-to-check links, DMARC/SPF/DKIM, external-sender banners, blocking lookalikes, and an easy report button."},
+{id:"red-dirbust",side:"red",title:"Directory and endpoint discovery",diff:"Intermediate",reward:35,badge:"Path Finder",brief:"Map hidden endpoints on shop.example (192.0.2.30). Find what the developers left exposed.",steps:[
+{kind:"terminal",prompt:"Brute-force common paths against the web app.",placeholder:"e.g. gobuster dir -u http://192.0.2.30 -w list.txt",accept:["gobuster","ffuf","dirb","dirsearch","wfuzz"],output:"200  /login\n200  /about\n301  /admin\n200  /backup.zip\n403  /api\n200  /robots.txt\n200  /.git/config",ok:"Discovery complete. Several non-linked paths exist.",hint:"Common tools: gobuster, ffuf, dirb, dirsearch."},
+{kind:"choice",question:"Which finding is the most dangerous?",options:["/about","/backup.zip and /.git/config (source and secrets exposed)","/robots.txt","/login"],correct:1,explain:"An exposed backup archive and a public .git directory can leak source code, credentials and config.",hint:"Which paths reveal source code or secrets?"},
+{kind:"choice",question:"Responsible next step for the recon?",options:["Publicly dump everything online","Review the exposed files for secrets and report the misconfiguration","Deface the site","Ignore it"],correct:1,explain:"In authorized testing you document exposed secrets and report them so they can be removed.",hint:"The goal is to document and report, within scope."}
+],debrief:"How defenders stop this: block sensitive paths, never deploy .git or backups to webroot, require auth on /admin and /api, and monitor for scanning bursts."},
+{id:"red-idor",side:"red",title:"IDOR in a fake API",diff:"Advanced",reward:45,badge:"Reference Breaker",brief:"The API at 192.0.2.40 returns invoices by numeric id. You are logged in as user 1001. Test whether you can read other users' data (simulated).",steps:[
+{kind:"terminal",prompt:"Request your own invoice first.",placeholder:"e.g. curl http://192.0.2.40/api/invoice?id=1001",accept:["curl","wget","http","get","invoice"],output:"{ \"id\":1001, \"customer\":\"you\", \"total\":\"$120\", \"card_last4\":\"4455\" }\n200 OK",ok:"Baseline captured: id 1001 returns your own invoice.",hint:"Use curl against /api/invoice?id=1001."},
+{kind:"terminal",prompt:"Now change the id to access a different user's record.",placeholder:"e.g. curl http://192.0.2.40/api/invoice?id=1002",accept:["1002","1003","1000","1004","1005"],output:"{ \"id\":1002, \"customer\":\"A. Nguyen\", \"total\":\"$4,210\", \"card_last4\":\"7781\" }\n200 OK  <-- another user's data, no access check!",ok:"You read another user's invoice by changing the id. That is IDOR.",hint:"Just increment or change the id value in the request."},
+{kind:"choice",question:"What is the root cause?",options:["The API is slow","It authenticates the user but never checks they own the requested object","The database is offline","The id is too short"],correct:1,explain:"The endpoint confirms you are logged in but not that the object belongs to you (missing authorization).",hint:"Authentication vs authorization: which is missing?"},
+{kind:"choice",question:"Correct fix?",options:["Make ids longer and random only","Enforce per-object authorization checks server-side (and use unguessable ids as defense in depth)","Hide the API","Trust the client"],correct:1,explain:"The server must verify ownership on every object access; random ids alone are not a real fix.",hint:"The server must verify who owns the object."}
+],debrief:"How defenders stop this: enforce object-level authorization on every request, log access anomalies, and treat ids as untrusted input."},
+{id:"red-privesc",side:"red",title:"Linux privilege escalation",diff:"Expert",reward:60,badge:"Root Cause",brief:"You have a low-privilege shell as 'www' on 10.10.14.7. Escalate to root. Minimal hand-holding: type the commands yourself (simulated).",steps:[
+{kind:"terminal",prompt:"Enumerate what sudo rights this account has.",placeholder:"type a command",accept:["sudo -l","sudo"],output:"Matching Defaults entries for www on target:\n    env_reset, mail_badpass\nUser www may run the following commands on target:\n    (root) NOPASSWD: /usr/bin/find",ok:"www can run /usr/bin/find as root with no password.",hint:"List your sudo permissions."},
+{kind:"terminal",prompt:"Abuse the allowed binary to spawn a root shell (GTFOBins-style).",placeholder:"type a command",accept:["find","-exec"],output:"# id\nuid=0(root) gid=0(root) groups=0(root)\n[simulated] root shell obtained via: sudo find . -exec /bin/sh \\; -quit",ok:"find can execute commands, so running it as root gives a root shell.",hint:"find has an -exec flag that runs commands; running find as root runs them as root."},
+{kind:"choice",question:"Which class of misconfiguration did you exploit?",options:["A weak TLS cipher","A sudo NOPASSWD entry on a binary that can spawn a shell","An open S3 bucket","A DNS misconfig"],correct:1,explain:"Granting sudo on a shell-capable binary (find, vim, awk, etc.) effectively grants full root.",hint:"It involved sudo and a flexible binary."}
+],debrief:"How defenders stop this: grant sudo narrowly, never on shell-capable binaries; audit sudoers and SUID files; use least privilege and monitor for privilege changes."},
+{id:"red-vishing",side:"red",title:"Vishing pretext analysis",diff:"Intermediate",reward:35,badge:"Smooth Talker",brief:"Analyze a recorded voice-phishing (vishing) call transcript and identify the manipulation and the real goal.",evidence:"Caller: Hi, this is Dave from IT security. We detected a login to your account from overseas.\nEmployee: Oh no, really?\nCaller: Yes, I need to lock it down right now. I'm sending a code to your phone - read it back to confirm it's you.\nEmployee: Should I call the help desk to verify?\nCaller: No time, the attacker is active. Just read me the 6-digit code.",steps:[
+{kind:"choice",question:"Primary manipulation tactic?",options:["Scarcity of prizes","Authority plus manufactured urgency","Humor","Reciprocity"],correct:1,explain:"The caller impersonates authority (IT security) and manufactures urgency to stop the target from verifying.",hint:"Who does the caller claim to be, and why the rush?"},
+{kind:"choice",question:"What is the caller actually after?",options:["The employee's lunch order","The MFA one-time code to complete their own login","A software update","The office address"],correct:1,explain:"The 'code sent to your phone' is the victim's MFA OTP; reading it back hands the attacker account access.",hint:"What was 'sent to your phone' that they want read back?"},
+{kind:"choice",question:"The strongest red flag?",options:["The caller said hello","The caller refused a call-back verification and pressured for an OTP","The call was short","They mentioned IT"],correct:1,explain:"Refusing verification and pressuring for a one-time code is a hallmark of vishing. Never share OTPs.",hint:"What did the caller refuse to let the employee do?"}
+],debrief:"How defenders stop this: never share OTPs, enforce call-back verification, train on vishing, use phishing-resistant MFA (FIDO2) and caller-ID skepticism."},
+{id:"blue-bruteforce",side:"blue",title:"Hunt a brute-force attack",diff:"Beginner",reward:25,badge:"Log Hunter",brief:"Review sshd auth logs from the VPN gateway. Find the attacker and whether they got in. All IPs fictional.",evidence:"Nov 03 02:11:04 vpn sshd[2210]: Failed password for admin from 198.51.100.23 port 51144\nNov 03 02:11:05 vpn sshd[2211]: Failed password for admin from 198.51.100.23 port 51150\nNov 03 02:11:06 vpn sshd[2212]: Failed password for root  from 198.51.100.23 port 51162\n... 247 failed attempts from 198.51.100.23 in 9 minutes ...\nNov 03 02:19:52 vpn sshd[2460]: Accepted password for admin from 198.51.100.23 port 51999\nNov 03 02:11:04 vpn sshd[2209]: Accepted password for jdoe  from 10.0.4.12 port 44102",steps:[
+{kind:"choice",question:"Which IP is the attacker?",options:["10.0.4.12","198.51.100.23","192.0.2.10","127.0.0.1"],correct:1,explain:"198.51.100.23 produced hundreds of failed logins across accounts. 10.0.4.12 is one normal success.",hint:"Which address is on the flood of Failed password lines?"},
+{kind:"choice",question:"What makes this clearly a brute-force and likely breach?",options:["One failed login","Hundreds of failures, then an Accepted login from the same IP","A single success","Night-time timestamps"],correct:1,explain:"High-volume failures followed by a success from the same source means the guessing likely worked.",hint:"Look at what happens right after the flood of failures."},
+{kind:"terminal",prompt:"Write a one-liner to count failed logins per source IP.",placeholder:"e.g. grep 'Failed password' auth.log | ... | sort | uniq -c",accept:["grep","awk","uniq","sort"],output:"[simulated] parsing auth.log...\n    247 198.51.100.23\n      1 10.0.4.12",ok:"The count confirms 198.51.100.23 as the clear outlier.",hint:"Filter for Failed password, pull the IP, then sort | uniq -c."}
+],debrief:"How defenders stop this: rate-limiting and fail2ban, lockouts, key-based SSH with MFA, no internet-facing SSH, and SIEM alerts on failed-login spikes."},
+{id:"blue-phishtriage",side:"blue",title:"Triage a reported phishing email",diff:"Intermediate",reward:35,badge:"Mail Marshal",brief:"A user forwarded a suspicious email. Read the headers and link, then decide what is happening.",evidence:"From: \"PayPal Billing\" <billing@paypa1-support.com>\nReturn-Path: <bounce@mailer-x7.ru>\nReceived: from mailer-x7.ru (203.0.113.44)\nAuthentication-Results: spf=fail; dkim=none; dmarc=fail\nSubject: Urgent: your account will be suspended in 24 hours\nLink: http://192.0.2.77/paypal/login.php",steps:[
+{kind:"choice",question:"What do the headers tell you about the sender?",options:["It is legitimately from PayPal","It is spoofed: lookalike domain, Return-Path mismatch, and SPF/DKIM/DMARC all fail","It has no sender","It came from an internal server"],correct:1,explain:"paypa1-support.com is a lookalike, Return-Path points to an unrelated .ru host, and authentication failed.",hint:"Compare the From domain, Return-Path, and Authentication-Results."},
+{kind:"choice",question:"Is the link safe to click to 'check'?",options:["Yes, open it in your main browser","No, it is a raw IP serving a fake login path; only detonate in a sandbox","Yes if you are quick","No link is present"],correct:1,explain:"A bare IP hosting /paypal/login.php is a credential-harvesting page. Never open it on a production machine.",hint:"Legitimate brands do not host logins on a raw IP."},
+{kind:"choice",question:"Best response action?",options:["Reply and ask if it is real","Report it, block the sender/domain and IP, and warn other users","Delete it silently","Forward it to all staff as a joke"],correct:1,explain:"Report through the process, block the indicators, and send an awareness note.",hint:"Think containment and prevention, not conversation."}
+],debrief:"How defenders stop this: enforce DMARC, flag external senders, sandbox links, block indicators fast, and make reporting one click."},
+{id:"blue-firewall",side:"blue",title:"Write firewall rules to block the attack",diff:"Intermediate",reward:35,badge:"Firewall Architect",brief:"Attacker 198.51.100.23 is brute-forcing SSH (22) on the VPN gateway. Choose rules that stop them without breaking normal access.",steps:[
+{kind:"choice",question:"Which single rule most precisely blocks this attacker's SSH access?",options:["allow any to any","deny from 198.51.100.23 to port 22","deny from any to port 443","allow from 198.51.100.23 to port 22"],correct:1,explain:"Deny the specific hostile source to port 22: stops the attacker, leaves others untouched.",hint:"Block the hostile source IP on the service it attacks."},
+{kind:"choice",question:"Stronger long-term inbound policy?",options:["Default allow, deny a few bad IPs","Default deny inbound, allow only what is needed (ideally SSH over VPN only)","Allow all from the internet","Disable the firewall"],correct:1,explain:"Default-deny with an explicit allowlist beats chasing bad IPs; SSH should not face the internet.",hint:"Blocklists never end; allowlists are finite."}
+],debrief:"How defenders stop this: default-deny inbound, management only over VPN, geo/IP allowlists, and automated blocking from IDS alerts."},
+{id:"blue-ir",side:"blue",title:"Incident response ordering",diff:"Beginner",reward:25,badge:"IR Commander",brief:"A host is confirmed compromised and beaconing out. Work the response in order: contain, eradicate, recover.",steps:[
+{kind:"choice",question:"First action, right now?",options:["Rebuild from backup","Contain: isolate the host from the network to stop spread and exfiltration","Write the report","Pay the attacker"],correct:1,explain:"Containment first: isolate the host (preserving evidence) to limit damage.",hint:"Stop the bleeding before cleaning up."},
+{kind:"choice",question:"Next, after containment?",options:["Recover immediately","Eradicate: remove malware/persistence, rotate credentials, close the entry point","Ignore it","Delete all logs"],correct:1,explain:"Eradication removes the threat and the way in, and rotates exposed credentials, before restoring service.",hint:"Remove the threat before bringing systems back."},
+{kind:"choice",question:"Finally?",options:["Recover: restore from clean backups, monitor closely, run lessons learned","Turn off monitoring","Skip the review","Reconnect without checking"],correct:0,explain:"Recovery restores from known-good backups with heightened monitoring, then a lessons-learned review.",hint:"The last phase gets you safely back to normal."}
+],debrief:"How defenders stop this: a tested IR plan, offline backups, EDR for fast containment, credential rotation playbooks, and a blameless review."},
+{id:"blue-ioc",side:"blue",title:"Find indicators of compromise",diff:"Advanced",reward:45,badge:"IOC Analyst",brief:"Triage process and network output from a suspect host. Identify the malicious process, the C2 address, and what to share as IOCs. Addresses fictional.",evidence:"PID   USER  COMMAND\n812   www   /usr/sbin/apache2\n1337  www   /tmp/.update  --beacon\n\nPROTO LOCAL              FOREIGN             STATE\ntcp   192.0.2.10:443     10.0.4.12:51002     ESTABLISHED\ntcp   192.0.2.10:49888   203.0.113.66:4444   ESTABLISHED",steps:[
+{kind:"choice",question:"Which process is suspicious?",options:["/usr/sbin/apache2","/tmp/.update --beacon (hidden binary in /tmp with a beacon flag)","Neither","Both are normal"],correct:1,explain:"A hidden dot-file binary in /tmp with a --beacon argument is a textbook implant.",hint:"Look for an odd path and a telling argument."},
+{kind:"choice",question:"Which is the likely C2 address?",options:["10.0.4.12:51002","203.0.113.66:4444","192.0.2.10:443","127.0.0.1:22"],correct:1,explain:"The outbound session to 203.0.113.66 on 4444 (a classic listener port) is the C2 channel.",hint:"Which external connection uses a suspicious high port?"},
+{kind:"choice",question:"What should you share as IOCs?",options:["Only the hostname","The C2 IP/port, the file path/hash of /tmp/.update, and the process name","Nothing, it is internal","Just the timestamp"],correct:1,explain:"Useful IOCs: 203.0.113.66:4444, the /tmp/.update path and hash, and the process name.",hint:"IOCs are concrete artifacts others can search for."}
+],debrief:"How defenders stop this: EDR for odd /tmp execution, egress filtering to block C2, file-integrity monitoring, IOC sharing, and alerts on uncommon outbound ports."},
+{id:"blue-malware",side:"blue",title:"Malware triage",diff:"Advanced",reward:45,badge:"Sample Slayer",brief:"A user double-clicked an attachment. Triage the flagged file using a scan report (VirusTotal-style, fictional).",evidence:"File: invoice.pdf.exe\nSHA256: 9f1c4a...e3a (fictional)\nMulti-engine scan: 54 / 70 flag Trojan.GenericKD\nDigitally signed: no\nBehavior: creates HKCU\\...\\Run\\updater, contacts 203.0.113.9:443, drops C:\\Users\\Public\\svc.exe",steps:[
+{kind:"choice",question:"Is this file malicious?",options:["No, it is a normal PDF","Yes: high detection rate, persistence, and C2 behavior","Cannot tell at all","Only if signed"],correct:1,explain:"54/70 detections plus a Run-key persistence and outbound C2 make this clearly malicious.",hint:"Weigh the detection count and the behavior."},
+{kind:"choice",question:"What was the biggest giveaway to the user before opening?",options:["The file had an icon","The double extension invoice.pdf.exe (an executable masked as a PDF)","It was in an email","It had a long name"],correct:1,explain:"A .pdf.exe double extension is a classic masquerade; the real file is an executable.",hint:"Look at the full file extension."},
+{kind:"choice",question:"Best immediate response?",options:["Run it again to confirm","Isolate the host, block 203.0.113.9, pull the sample, and hunt the Run key and svc.exe across the fleet","Email the attacker","Reboot and hope"],correct:1,explain:"Contain the host, block the C2, preserve the sample, and sweep for the same IOCs elsewhere.",hint:"Contain, block, preserve, then hunt."}
+],debrief:"How defenders stop this: block double-extension and executable attachments, application allowlisting, EDR behavioral detection, egress filtering, and user training."},
+{id:"blue-siem",side:"blue",title:"SIEM alert correlation",diff:"Expert",reward:60,badge:"Correlation Ace",brief:"Several alerts fired across tools. Correlate them into one attack chain and hunt for spread. Minimal hand-holding.",evidence:"02:01 EDR : Office macro spawned powershell.exe (host WKS-14)\n02:03 Proxy: powershell.exe -> 203.0.113.9 (download cradle)\n02:07 Auth : WKS-14 -> FS01 SMB login as svc_backup\n02:12 DLP  : 2.3 GB uploaded to files.paste-site.test\n02:20 EDR : WKS-14 scheduled task 'sysupd' created",steps:[
+{kind:"choice",question:"What was the initial access vector?",options:["A malicious Office macro that launched PowerShell","A firewall change","A hardware failure","A DNS outage"],correct:0,explain:"The chain starts with an Office macro spawning PowerShell: classic phishing-to-macro initial access.",hint:"Look at the earliest alert."},
+{kind:"choice",question:"Which ordering is the correct attack chain?",options:["Exfil -> macro -> persistence -> C2 -> lateral","Macro/PowerShell -> C2 download -> lateral SMB to FS01 -> exfil -> persistence","Persistence -> exfil -> macro -> lateral","Lateral -> macro -> C2 -> exfil"],correct:1,explain:"Initial macro+PowerShell, then C2 download, lateral movement to FS01, data exfil, then persistence.",hint:"Order the timestamps into kill-chain phases."},
+{kind:"terminal",prompt:"Hunt for other hosts talking to the C2 IP across proxy logs.",placeholder:"type a search/grep query",accept:["203.0.113.9","index","search","grep","proxy","dst"],output:"[simulated] proxy search for 203.0.113.9 ...\nWKS-14  02:03\nWKS-22  02:41\nWKS-31  03:05\n3 hosts beaconing - scope is wider than one machine.",ok:"Two additional infected hosts found. Expand containment.",hint:"Search proxy logs for the C2 IP 203.0.113.9."}
+],debrief:"How defenders stop this: disable Office macros, constrain PowerShell (logging + AMSI), segment SMB, DLP egress controls, and correlation rules that chain these signals automatically."},
+{id:"blue-harden",side:"blue",title:"Harden an exposed server",diff:"Intermediate",reward:35,badge:"Fortifier",brief:"Review a weak server configuration and choose the hardening steps with the most impact.",evidence:"sshd_config: PermitRootLogin yes\nsshd_config: PasswordAuthentication yes\nFirewall: disabled (port 22 open to 0.0.0.0/0)\nUnattended-upgrades: off\nMFA: not configured",steps:[
+{kind:"choice",question:"Biggest immediate authentication win?",options:["Change the SSH banner","Disable root login and password auth; require SSH keys plus MFA","Rename the server","Increase the font size"],correct:1,explain:"Killing root login and password auth and requiring keys+MFA removes the easiest attack paths.",hint:"Focus on how logins are authenticated."},
+{kind:"choice",question:"Best network change?",options:["Open more ports","Enable the firewall, default-deny inbound, and restrict SSH to the VPN/allowlist","Expose the database too","Disable logging"],correct:1,explain:"Default-deny inbound and restricting management access shrinks the attack surface dramatically.",hint:"Limit who can even reach port 22."},
+{kind:"choice",question:"Best ongoing control?",options:["Never patch, to avoid downtime","Enable automatic security updates and continuous monitoring","Turn off alerts","Disable backups"],correct:1,explain:"Automatic patching plus monitoring keeps the server resilient over time.",hint:"Think about keeping it secure after today."}
+],debrief:"How defenders stop this: secure baselines, config management, key-based SSH with MFA, default-deny firewalls, automated patching, and drift detection."},
+{id:"blue-pcap",side:"blue",title:"Traffic analysis: spot the exfiltration",diff:"Expert",reward:60,badge:"Packet Hunter",brief:"Analyze a captured traffic summary (pcap-style) for data exfiltration. Minimal hand-holding.",evidence:"No. Time  Src        Dst            Proto Len   Info\n1  0.00  10.0.5.9   8.8.8.8        DNS   74    A files.paste-site.test\n2  0.10  10.0.5.9   203.0.113.50   TLS   1480  Client Hello (SNI: files.paste-site.test)\n3  ...   10.0.5.9   203.0.113.50   TLS   1480  (x4200 packets, ~1.9 GB sent)\n4  1.20  10.0.5.9   203.0.113.50   DNS   240   TXT q=ZXhmaWx0cmF0ZWRkYXRh... (long base64)",steps:[
+{kind:"choice",question:"Which internal host is exfiltrating?",options:["8.8.8.8","10.0.5.9","203.0.113.50","None"],correct:1,explain:"10.0.5.9 is the internal source sending the large outbound volume and odd DNS.",hint:"Which Src address sends the big outbound flow?"},
+{kind:"choice",question:"Strongest exfiltration indicator here?",options:["A single DNS A record","Sustained ~1.9 GB outbound to an unknown TLS host, plus long base64 DNS TXT (DNS tunneling)","Normal web browsing","A ping"],correct:1,explain:"Large sustained upload to an unknown host and base64-looking DNS TXT queries signal exfil and DNS tunneling.",hint:"Look at the volume and the odd DNS TXT content."},
+{kind:"terminal",prompt:"Write a filter to isolate the suspect flow.",placeholder:"e.g. ip.addr == 203.0.113.50",accept:["ip.addr","203.0.113.50","10.0.5.9","dns","tcp","filter"],output:"[simulated] filter applied\n4,200 packets, 1.9 GB to 203.0.113.50 over 6 min\n+ 38 DNS TXT queries to files.paste-site.test",ok:"Flow isolated: a clear exfiltration channel.",hint:"Filter on the destination IP or the suspicious host."},
+{kind:"choice",question:"Best response?",options:["Nothing, TLS is encrypted so it is fine","Block the destination and domain, isolate 10.0.5.9, scope the data lost, and open an incident","Ask the user politely","Increase bandwidth"],correct:1,explain:"Block the channel, isolate the host, assess the exposed data, and run IR.",hint:"Contain the channel and the host, then investigate."}
+],debrief:"How defenders stop this: egress filtering and DNS monitoring, DLP, TLS inspection where appropriate, alerting on large outbound transfers and anomalous DNS TXT volume."}
+],
+campaigns:[
+{id:"camp-reddawn",title:"Operation Red Dawn",diff:"Advanced",reward:200,badge:"Red Dawn Victor",brief:"A multi-stage campaign against fictional Initech (192.0.2.60). First you breach as the red team, then switch sides and investigate your own attack as the blue team. Clear all four stages to earn the Purple Team badge.",stages:[
+{id:"rd-s1",side:"red",title:"Stage 1 - Breach: initial access",diff:"Advanced",reward:30,badge:"",brief:"Get a foothold in Initech. Recon, then choose the entry point.",steps:[
+{kind:"terminal",prompt:"Scan the target to find exposed services.",placeholder:"e.g. nmap -sV 192.0.2.60",accept:["nmap"],output:"PORT   STATE SERVICE\n80/tcp  open http   (Initech portal)\n443/tcp open https\n25/tcp  open smtp   (mail relay)\nFound login portal at /portal and an open contact form.",ok:"Portal and mail relay identified.",hint:"Use nmap for service discovery."},
+{kind:"choice",question:"Given a tight budget and the open mail relay, best initial-access play?",options:["Brute-force the front door for days","Send a targeted spear-phish to a portal user via the relay","Physically break in","Give up"],correct:1,explain:"A spear-phish through the exposed relay is the lowest-effort, highest-success entry here.",hint:"Which exposed service helps you reach a human?"}
+],debrief:"Stage cleared: initial access via social engineering."},
+{id:"rd-s2",side:"red",title:"Stage 2 - Escalate and stage exfil",diff:"Advanced",reward:30,badge:"",brief:"You landed a shell as a standard user. Escalate and prepare data for exfiltration (simulated).",steps:[
+{kind:"terminal",prompt:"Check for an easy privilege-escalation path.",placeholder:"type a command",accept:["sudo -l","sudo","find","suid"],output:"(root) NOPASSWD: /usr/bin/tar\n[simulated] tar can run commands via --checkpoint-action, so root is reachable.",ok:"A sudo-allowed tar gives a path to root.",hint:"List sudo rights or search for SUID binaries."},
+{kind:"choice",question:"To stay quiet while exfiltrating, you should...",options:["Zip everything and email it from the CEO account","Stage data and blend exfil into normal HTTPS to an external host in small chunks","Print it all","Post it on the public site"],correct:1,explain:"Low-and-slow exfil over normal-looking HTTPS evades volume alerts better than a noisy burst.",hint:"What traffic would a SOC least notice?"}
+],debrief:"Stage cleared: root obtained and data staged. Now switch sides."},
+{id:"rd-s3",side:"blue",title:"Stage 3 - Investigate your own attack",diff:"Advanced",reward:30,badge:"",brief:"You are now the Initech SOC. Investigate the breach you just carried out, using the logs it left behind.",evidence:"10:02 Mail : inbound message from relay, attachment opened by m.lee\n10:05 EDR  : winword.exe spawned cmd.exe on WKS-07\n10:14 Auth : sudo tar executed as root on APP01\n10:30 Proxy: steady 40 MB/5min HTTPS to 203.0.113.70 (unknown)",steps:[
+{kind:"choice",question:"What was the initial access?",options:["A USB drive","A phishing attachment opened by m.lee","A firewall bug","An insider"],correct:1,explain:"The mail+EDR correlation shows an opened attachment spawning a shell: phishing initial access.",hint:"Pair the mail event with the EDR event."},
+{kind:"choice",question:"Which event indicates exfiltration?",options:["winword.exe starting","The steady 40 MB/5min HTTPS stream to an unknown external host","A sudo command","The mail arriving"],correct:1,explain:"A sustained outbound stream to an unknown host is the exfiltration channel.",hint:"Look for ongoing outbound data."}
+],debrief:"Stage cleared: attack reconstructed from the defender's seat."},
+{id:"rd-s4",side:"blue",title:"Stage 4 - Contain and report",diff:"Advanced",reward:30,badge:"",brief:"Shut the intrusion down and hand off clean IOCs.",steps:[
+{kind:"choice",question:"First containment move?",options:["Reimage everything immediately","Isolate WKS-07 and APP01, and block 203.0.113.70 at the egress","Ignore it","Email the attacker"],correct:1,explain:"Isolate the known-affected hosts and cut the C2/exfil channel first.",hint:"Stop spread and exfil before cleanup."},
+{kind:"choice",question:"Which IOC set do you share?",options:["Just the date","203.0.113.70, the phishing sender/attachment hash, and the sudo-tar persistence technique","Nothing","The office Wi-Fi password"],correct:1,explain:"Share the exfil IP, the phishing artifacts, and the escalation technique so others can hunt and harden.",hint:"Share the concrete artifacts from every stage."}
+],debrief:"Campaign complete. You breached and then defended the same target, closing the loop."}
+]},
+{id:"camp-zerohour",title:"Zero Hour",diff:"Expert",reward:180,badge:"Zero Hour Hero",brief:"An expert two-stage boss: breach a fictional cloud app (203.0.113.200 / app.hooli.example), then detect and evict yourself. Free-form commands, hints hidden until requested.",stages:[
+{id:"zh-s1",side:"red",title:"Stage 1 - Foothold on the cloud app",diff:"Expert",reward:40,badge:"",brief:"Find and abuse a flaw in the cloud app to read data you should not (simulated).",steps:[
+{kind:"terminal",prompt:"Discover hidden API endpoints.",placeholder:"type a command",accept:["ffuf","gobuster","dirsearch","curl"],output:"/api/v1/users      200\n/api/v1/export     200 (admin?)\n/api/v1/orders?id= 200",ok:"An export endpoint and an id-based orders endpoint are exposed.",hint:"Fuzz for API paths with ffuf/gobuster, or probe with curl."},
+{kind:"terminal",prompt:"Abuse the id-based endpoint to read another tenant's order.",placeholder:"type a request",accept:["curl","id=","orders","2001","9999"],output:"{ \"id\":9999, \"tenant\":\"acme\", \"items\":[...], \"total\":\"$88,500\" }\nCross-tenant data returned with no authorization check (IDOR).",ok:"Cross-tenant IDOR confirmed.",hint:"Change the id parameter to another tenant's value."}
+],debrief:"Stage cleared: foothold via a cross-tenant IDOR."},
+{id:"zh-s2",side:"blue",title:"Stage 2 - Detect and evict",diff:"Expert",reward:40,badge:"",brief:"Now defend app.hooli.example: detect the abuse and shut it down.",evidence:"API gateway log:\n14:10 user=attacker tenant=evilco GET /api/v1/orders?id=9999 (tenant=acme) 200\n14:10 user=attacker GET /api/v1/orders?id=9998 (tenant=acme) 200\n14:11 user=attacker GET /api/v1/export 200  size=512MB",steps:[
+{kind:"choice",question:"What does the log reveal?",options:["Normal usage","One user reading many other tenants' objects then bulk-exporting: IDOR abuse and exfil","A DDoS","A backup job"],correct:1,explain:"A single principal enumerating cross-tenant ids and then bulk-exporting is clear IDOR abuse with exfil.",hint:"Whose data is 'attacker' reading, and what did they export?"},
+{kind:"terminal",prompt:"Write a detection query for cross-tenant object access.",placeholder:"type a query",accept:["tenant","search","where","!=","group","index"],output:"[simulated] rule matched: requests where requester.tenant != object.tenant\nflags user=attacker (312 cross-tenant reads in 90s)",ok:"Detection rule flags the cross-tenant access pattern.",hint:"Alert when the requester's tenant does not equal the object's tenant."},
+{kind:"choice",question:"Fix and response?",options:["Add a CAPTCHA only","Enforce tenant-scoped authorization on every object, revoke the attacker, rotate keys, and assess exported data","Make ids longer only","Email the attacker"],correct:1,explain:"The real fix is server-side object authorization; plus revoke access, rotate secrets, and scope the breach.",hint:"The root cause is missing authorization, not guessable ids."}
+],debrief:"Campaign complete: you exploited and then eliminated a cross-tenant flaw. Purple Team mastery."}
+]}
+],
+scn:{
+companies:["Globex Corp","Initech","Umbrella Logistics","Hooli Cloud","Stark Retail","Wonka Foods"],
+vectors:["a phishing email with a malicious attachment","an exposed admin panel with default credentials","a SQL injection in the login form","a password reused from a public breach","an unpatched VPN appliance","a misconfigured public storage bucket"],
+targets:["the customer database","the domain controller","the payment gateway","the email server","the CI/CD pipeline","the backup server"],
+twists:["the on-call SOC analyst is on vacation","central logging was disabled last week","an insider quietly shared credentials","the intrusion has gone unnoticed for 30 days","MFA was only half rolled out","a third-party vendor was the entry point"],
+questions:[
+{question:"Red objective: you have a foothold. What is the best FIRST move?",options:["Run reconnaissance and map the target before acting","Immediately wipe all logs and disconnect","Email the CEO demanding a ransom"],correct:0},
+{question:"Blue objective: the alert just fired. What should the defender do FIRST?",options:["Isolate the affected host while preserving evidence","Pay the attacker to make it stop","Wait until Monday to look"],correct:0}
+]
+}
+};
+/* ---------- helpers ---------- */
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function shuffle(n){var a=[];for(var i=0;i<n;i++)a.push(i);for(var j=a.length-1;j>0;j--){var k=Math.floor(Math.random()*(j+1));var t=a[j];a[j]=a[k];a[k]=t;}return a;}
+function rankFor(xp){var cur=DATA.ranks[0],next=null;for(var i=0;i<DATA.ranks.length;i++){if(xp>=DATA.ranks[i].min)cur=DATA.ranks[i];}for(var j=0;j<DATA.ranks.length;j++){if(DATA.ranks[j].min>xp){next=DATA.ranks[j].min;break;}}return{name:cur.name,min:cur.min,next:next};}
+function levelFromScore(s){if(s<=3)return 0;if(s<=6)return 1;if(s<=9)return 2;if(s<=11)return 3;if(s<=13)return 4;return 5;}
+var LAB_INDEX={};
+DATA.labs.forEach(function(l){LAB_INDEX[l.id]=l;});
+DATA.campaigns.forEach(function(c){c.stages.forEach(function(s){LAB_INDEX[s.id]=s;});});
+
+var DEFAULT={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:false,scnWins:0};
+var S={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:false,scnWins:0,
+tab:"home",quizSet:null,quizIdx:0,quizPicks:[],quizDone:false,
+labProg:{},inputs:{},revealed:[],selectedLab:null,selectedCampaign:null,diffFilter:"All",
+scnCur:null,scnPicks:[null,null],scnDone:false,board:[],levelUp:"",theme:"dark"};
+
+var SAVE_KEY="cyberrange_academy_v2";
+function save(){try{var o={name:S.name,xp:S.xp,redXp:S.redXp,blueXp:S.blueXp,placement:S.placement,completed:S.completed,hardMode:S.hardMode,scnWins:S.scnWins,theme:S.theme};localStorage.setItem(SAVE_KEY,JSON.stringify(o));}catch(e){}}
+function load(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var o=JSON.parse(raw);["name","xp","redXp","blueXp","placement","completed","hardMode","scnWins","theme"].forEach(function(k){if(o[k]!==undefined&&o[k]!==null)S[k]=o[k];});}catch(e){}}
+
+function hm(){return S.hardMode?1.5:1;}
+function stepXp(){return Math.round(15*hm());}
+function hintCost(){return S.hardMode?25:10;}
+function prog(id){return S.labProg[id]||{step:0,outputs:[],done:false,feedback:"",tone:""};}
+
+function award(amount,label,side){
+ var before=rankFor(S.xp).name;
+ S.xp=Math.max(0,S.xp+amount);
+ var after=rankFor(S.xp).name;
+ if(amount>0&&after!==before)S.levelUp="Rank up - you reached "+after;
+ if(amount>0&&side==="red")S.redXp+=amount;
+ if(amount>0&&side==="blue")S.blueXp+=amount;
+ S.board.unshift({label:label,xp:amount});
+ if(S.board.length>25)S.board=S.board.slice(0,25);
+ save();
+}
+
+function completeLab(lab){
+ if(S.completed.indexOf(lab.id)>-1)return;
+ S.completed.push(lab.id);
+ award(Math.round(lab.reward*hm()),"Complete - "+lab.title,lab.side);
+ S.levelUp=lab.badge?("Complete: "+lab.title+". Badge: "+lab.badge):("Stage complete: "+lab.title);
+ var camp=null;
+ DATA.campaigns.forEach(function(c){if(c.stages.some(function(s){return s.id===lab.id;}))camp=c;});
+ if(camp){
+  var all=camp.stages.every(function(s){return S.completed.indexOf(s.id)>-1;});
+  if(all){award(Math.round(camp.reward*hm()),"Campaign cleared - "+camp.title,"");S.levelUp="Campaign complete: "+camp.title+". Badges: "+camp.badge+" + Purple Team.";}
+ }
+ save();
+}
+
+function submitTerminal(lab){
+ var p=prog(lab.id);if(p.done)return;
+ var step=lab.steps[p.step];if(step.kind!=="terminal")return;
+ var el=document.getElementById("term-"+lab.id);
+ var raw=(el?el.value:(S.inputs[lab.id]||"")).trim();
+ var val=raw.toLowerCase();
+ if(!val)return;
+ var ok=step.accept.some(function(a){return val.indexOf(a)>-1;});
+ if(!ok){S.labProg[lab.id]={step:p.step,outputs:p.outputs,done:false,feedback:"That command did not achieve the objective. Check the brief or use a hint.",tone:"err"};render();return;}
+ award(stepXp(),lab.title+" - step cleared",lab.side);
+ var last=p.step+1>=lab.steps.length;
+ var outs=p.outputs.concat(["$ "+raw,step.output]);
+ S.inputs[lab.id]="";
+ S.labProg[lab.id]={step:p.step+1,outputs:outs,done:last,feedback:step.ok,tone:"ok"};
+ if(last)completeLab(lab);
+ render();
+}
+function submitChoice(lab,idx){
+ var p=prog(lab.id);if(p.done)return;
+ var step=lab.steps[p.step];if(step.kind!=="choice")return;
+ if(idx!==step.correct){S.labProg[lab.id]={step:p.step,outputs:p.outputs,done:false,feedback:"Not the strongest choice. Reconsider and pick again.",tone:"err"};render();return;}
+ award(stepXp(),lab.title+" - step cleared",lab.side);
+ var last=p.step+1>=lab.steps.length;
+ S.labProg[lab.id]={step:p.step+1,outputs:p.outputs,done:last,feedback:step.explain,tone:"ok"};
+ if(last)completeLab(lab);
+ render();
+}
+function useHint(lab){
+ var p=prog(lab.id);var key=lab.id+":"+p.step;
+ if(S.revealed.indexOf(key)>-1)return;
+ S.revealed.push(key);
+ award(-hintCost(),"Hint used - "+lab.title,"");
+ render();
+}
+function generateScenario(){
+ var sc=DATA.scn;var pick=function(a){return a[Math.floor(Math.random()*a.length)];};
+ S.scnCur={company:pick(sc.companies),vector:pick(sc.vectors),target:pick(sc.targets),twist:pick(sc.twists),ip:"192.0.2."+(10+Math.floor(Math.random()*240))};
+ S.scnPicks=[null,null];S.scnDone=false;render();
+}
+function answerScn(qi,oi){
+ if(S.scnDone)return;
+ S.scnPicks[qi]=oi;
+ if(S.scnPicks[0]!==null&&S.scnPicks[1]!==null){
+  var all=DATA.scn.questions.every(function(q,i){return S.scnPicks[i]===q.correct;});
+  if(all){var mult=1+(S.placement?S.placement.level:0)*0.5;var reward=Math.round(80*mult*hm());award(reward,"Live scenario cleared","");S.scnDone=true;S.scnWins++;save();}
+ }
+ render();
+}
+function startQuiz(){S.quizSet=shuffle(DATA.quiz.length).slice(0,15);S.quizIdx=0;S.quizPicks=[];for(var i=0;i<15;i++)S.quizPicks.push(null);S.quizDone=false;}
+function finishQuiz(){
+ var score=0;S.quizSet.forEach(function(qi,pos){if(S.quizPicks[pos]===DATA.quiz[qi].correct)score++;});
+ var lvl=levelFromScore(score);S.placement={score:score,level:lvl};S.quizDone=true;
+ award(score*20,"Placement quiz - "+score+"/15","");render();
+}
+function resetAll(){
+ S.name="Ashley";S.xp=0;S.redXp=0;S.blueXp=0;S.placement=null;S.completed=[];S.hardMode=false;S.scnWins=0;
+ S.quizSet=null;S.quizIdx=0;S.quizPicks=[];S.quizDone=false;S.labProg={};S.inputs={};S.revealed=[];
+ S.selectedLab=null;S.selectedCampaign=null;S.diffFilter="All";S.scnCur=null;S.scnPicks=[null,null];S.scnDone=false;S.board=[];S.levelUp="";
+ try{localStorage.removeItem(SAVE_KEY);}catch(e){}
+ render();
+}
+
+function badges(){
+ var set={};var add=function(b){set[b]=1;};
+ if(S.placement)add("Placement Pro");
+ var red=0,blue=0;
+ S.completed.forEach(function(id){var l=LAB_INDEX[id];if(l){if(l.side==="red")red++;if(l.side==="blue")blue++;if(l.badge)add(l.badge);}});
+ if(red>0)add("First Blood");
+ if(red>0&&blue>0)add("Purple Team");
+ DATA.campaigns.forEach(function(c){if(c.stages.every(function(s){return S.completed.indexOf(s.id)>-1;}))add(c.badge);});
+ if(S.scnWins>0)add("Scenario Runner");
+ if(S.xp>=2200)add("Legend");
+ return Object.keys(set);
+}
+/* ---------- view helpers ---------- */
+function chip(t,fg,bg){return '<span class="chip" style="color:var('+fg+');background:var('+bg+')">'+esc(t)+'</span>';}
+function bar(pct,color){pct=Math.max(0,Math.min(100,pct));return '<div class="bar"><div style="width:'+pct+'%;background:var('+color+')"></div></div>';}
+function diffVar(d){return d==="Beginner"?"--suc":d==="Intermediate"?"--wrn":d==="Advanced"?"--dng":"--acc";}
+function sideVar(s){return s==="red"?"--dng":"--acc";}
+function sideSub(s){return s==="red"?"--dngsub":"--accsub";}
+function fb(text,tone){if(!text)return "";return '<div class="fb '+(tone||"")+'">'+esc(text)+'</div>';}
+
+function renderNav(){
+ var tabs=[["home","Home / Profile"],["quiz","Placement Quiz"],["red","Red Team"],["blue","Blue Team"],["scenario","Live Scenario"],["campaigns","Campaigns"]];
+ document.getElementById("nav").innerHTML=tabs.map(function(t){return '<button class="btn'+(S.tab===t[0]?" active":"")+'" data-action="tab" data-tab="'+t[0]+'">'+t[1]+'</button>';}).join("");
+}
+function renderLevelUp(){
+ var el=document.getElementById("levelup");
+ if(!S.levelUp){el.innerHTML="";return;}
+ el.innerHTML='<div class="card" style="margin-top:14px;background:var(--accsub);border-color:var(--acc);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span style="color:var(--acc)">'+esc(S.levelUp)+'</span><button class="btn" data-action="dismiss">Dismiss</button></div>';
+}
+
+function viewHome(){
+ var r=rankFor(S.xp);var pct=r.next?((S.xp-r.min)/(r.next-r.min))*100:100;
+ var nextName="";if(r.next){DATA.ranks.forEach(function(x){if(x.min===r.next)nextName=x.name;});}
+ var tot=S.redXp+S.blueXp;var redPct=tot>0?(S.redXp/tot)*100:50;
+ var bl=badges();
+ var html='<div class="col">';
+ html+='<div class="card"><div class="row" style="gap:16px;align-items:flex-end">';
+ html+='<div style="flex:1 1 220px"><p class="muted">Operator name</p><input type="text" data-action="name" value="'+esc(S.name)+'" style="width:100%;margin-top:4px"></div>';
+ html+='<div style="flex:1 1 140px"><p class="muted">Current rank</p><h2>'+esc(r.name)+'</h2></div>';
+ html+='<div style="flex:1 1 100px"><p class="muted">Total XP</p><h2>'+S.xp+'</h2></div>';
+ html+='<div style="flex:1 1 160px"><p class="muted">Placement level</p><h3>'+esc(S.placement?DATA.levels[S.placement.level]:"Not set")+'</h3></div>';
+ html+='</div><div style="margin-top:14px"><p class="muted">'+(r.next?("Progress to "+esc(nextName)+" ("+S.xp+" / "+r.next+" XP)"):"Top rank reached")+'</p><div style="margin-top:6px">'+bar(pct,"--acc")+'</div></div></div>';
+ html+='<div class="card"><h3>Red vs Blue skill split</h3><p class="muted" style="margin-top:4px">Offense XP '+S.redXp+' &middot; Defense XP '+S.blueXp+'</p><div style="margin-top:10px;height:14px;width:100%;display:flex;border-radius:999px;overflow:hidden;background:var(--sub)"><div style="width:'+redPct+'%;background:var(--dng)"></div><div style="width:'+(100-redPct)+'%;background:var(--acc)"></div></div><div class="row" style="justify-content:space-between;margin-top:6px"><span class="muted" style="color:var(--dng)">Red team</span><span class="muted" style="color:var(--acc)">Blue team</span></div></div>';
+ html+='<div class="card"><div class="row" style="justify-content:space-between"><h3>Hard mode</h3><div class="tog" data-action="toggle-hard"><div class="sw'+(S.hardMode?" on":"")+'"><span></span></div><span class="muted">'+(S.hardMode?"On":"Off")+'</span></div></div><p class="sec" style="margin-top:8px">Hard mode hides hints until requested (they always are), raises hint cost to 25 XP, and multiplies all XP by 1.5. Expert labs and the Zero Hour campaign already run with minimal hand-holding and free-form commands.</p></div>';
+ html+='<div class="card"><h3>Badges</h3>';
+ if(bl.length===0)html+='<p class="sec" style="margin-top:8px">No badges yet. Take the placement quiz and clear a lab to start earning them.</p>';
+ else html+='<div class="row" style="margin-top:10px">'+bl.map(function(b){return chip(b,"--acc","--accsub");}).join("")+'</div>';
+ html+='<p class="muted" style="margin-top:10px">Earnable includes: First Blood, Injection Master, XSS Hunter, Cracked It, Phish Spotter, Recon Ranger, Path Finder, Reference Breaker, Root Cause, Smooth Talker, Log Hunter, Mail Marshal, Firewall Architect, IR Commander, IOC Analyst, Sample Slayer, Correlation Ace, Fortifier, Packet Hunter, Purple Team, Red Dawn Victor, Zero Hour Hero, Scenario Runner, Placement Pro, and Legend (2200+ XP).</p></div>';
+ html+='<div class="card"><h3>Mission log (this session)</h3>';
+ if(S.board.length===0)html+='<p class="sec" style="margin-top:8px">Nothing logged yet.</p>';
+ else html+='<div class="col" style="gap:6px;margin-top:10px">'+S.board.map(function(e){return '<div class="row" style="justify-content:space-between"><span class="sec">'+esc(e.label)+'</span><span style="font-family:var(--mono);color:var('+(e.xp>=0?"--suc":"--dng")+')">'+(e.xp>=0?"+":"")+e.xp+' XP</span></div>';}).join("")+'</div>';
+ html+='</div>';
+ html+='<div class="card" style="background:var(--wrnsub);border-color:var(--wrn)"><h3 style="color:var(--wrn)">Ethics and safety</h3><p class="sec" style="margin-top:6px">Everything here is simulated against fictional targets and reserved IP ranges (10.x, 192.0.2.x, 198.51.100.x, 203.0.113.x) and example domains. Only ever test systems you own or have written permission to test. Unauthorized hacking is illegal.</p><p class="sec" style="margin-top:6px">Practice legally on: TryHackMe, Hack The Box, PortSwigger Web Security Academy, OverTheWire.</p></div>';
+ html+='<div class="row"><button class="btn" data-action="reset">Reset all progress</button><span class="muted">Progress saves to this browser (localStorage). Reset clears it everywhere.</span></div>';
+ html+='</div>';
+ return html;
+}
+
+function viewQuiz(){
+ if(!S.quizSet)startQuiz();
+ if(S.quizDone&&S.placement){
+  var h='<div class="col"><div class="card"><h2>Placement complete</h2><p class="sec" style="margin-top:8px">You scored '+S.placement.score+' / 15. Your starting level:</p><h2 style="color:var(--acc);margin-top:6px">'+esc(DATA.levels[S.placement.level])+'</h2><p class="muted" style="margin-top:8px">Scenario rewards now scale to this level. Earned '+(S.placement.score*20)+' XP.</p><div style="margin-top:12px"><button class="btn primary" data-action="quiz-retake">Retake (new random 15)</button></div></div>';
+  h+='<div class="card"><h3>Answer review</h3><div class="col" style="gap:10px;margin-top:10px">'+S.quizSet.map(function(qi,pos){var q=DATA.quiz[qi];var right=S.quizPicks[pos]===q.correct;return '<div class="subcard"><div class="row" style="justify-content:space-between"><span>'+(pos+1)+'. '+esc(q.q)+'</span>'+chip(right?"Correct":"Missed",right?"--suc":"--dng",right?"--sucsub":"--dngsub")+'</div><p class="muted" style="margin-top:6px">Answer: '+esc(q.options[q.correct])+'. '+esc(q.explain)+'</p></div>';}).join("")+'</div></div></div>';
+  return h;
+ }
+ var qi=S.quizSet[S.quizIdx];var q=DATA.quiz[qi];var picked=S.quizPicks[S.quizIdx];var answered=picked!==null;var last=S.quizIdx===14;
+ var html='<div class="card"><div class="row" style="justify-content:space-between"><span class="muted">Question '+(S.quizIdx+1)+' of 15</span><div class="row">'+chip(q.topic,"--tx2","--sub")+chip(q.diff,diffVar(q.diff),"--sub")+'</div></div>';
+ html+='<div style="margin-top:10px">'+bar(((S.quizIdx+(answered?1:0))/15)*100,"--acc")+'</div>';
+ html+='<h3 style="margin-top:14px">'+esc(q.q)+'</h3><div style="margin-top:12px">';
+ html+=q.options.map(function(opt,i){var cls="opt";if(answered){if(i===q.correct)cls+=" ok";else if(i===picked)cls+=" err";else cls+=" dim";}return '<button class="'+cls+'" data-action="quiz-pick" data-pos="'+S.quizIdx+'" data-opt="'+i+'">'+esc(opt)+'</button>';}).join("");
+ html+='</div>';
+ if(answered){html+='<div style="margin-top:12px">'+fb((picked===q.correct?"Correct. ":"Not quite. ")+q.explain,picked===q.correct?"ok":"err")+'</div><div class="row" style="margin-top:12px">';
+  if(!last)html+='<button class="btn primary" data-action="quiz-next">Next question</button>';else html+='<button class="btn primary" data-action="quiz-finish">Finish and get my level</button>';
+  if(S.quizIdx>0)html+='<button class="btn" data-action="quiz-prev">Previous</button>';
+  html+='</div>';}
+ else if(S.quizIdx>0){html+='<div class="row" style="margin-top:12px"><button class="btn" data-action="quiz-prev">Previous</button></div>';}
+ html+='</div>';
+ return html;
+}
+
+function labCard(lab){
+ var done=S.completed.indexOf(lab.id)>-1;
+ return '<button class="labcard'+(done?" done":"")+'" data-action="open-lab" data-lab="'+lab.id+'"><div class="row">'+chip(lab.diff,diffVar(lab.diff),"--sub")+chip(lab.side==="red"?"Red team":"Blue team",sideVar(lab.side),sideSub(lab.side))+(done?chip("Completed","--suc","--sucsub"):chip("+"+lab.reward+" XP","--tx2","--sub"))+'</div><span style="font-size:15px;font-weight:600">'+esc(lab.title)+'</span><span class="muted">'+lab.steps.length+' steps &middot; badge: '+esc(lab.badge)+'</span></button>';
+}
+
+function labBody(lab){
+ var p=prog(lab.id);var accent=sideVar(lab.side);var key=lab.id+":"+p.step;var hintShown=S.revealed.indexOf(key)>-1;
+ var step=p.done?null:lab.steps[p.step];
+ var html='<div class="card" style="border-color:var('+accent+')"><h2>'+esc(lab.title)+'</h2><p class="sec" style="margin-top:8px">'+esc(lab.brief)+'</p>';
+ if(lab.evidence)html+='<div style="margin-top:12px"><p class="muted" style="margin-bottom:6px">Evidence</p><pre>'+esc(lab.evidence)+'</pre></div>';
+ html+='<div style="margin-top:12px">'+bar((p.step/lab.steps.length)*100,accent)+'<p class="muted" style="margin-top:6px">Step '+Math.min(p.step+1,lab.steps.length)+' of '+lab.steps.length+'</p></div></div>';
+ if(p.outputs.length>0)html+='<div class="card"><p class="muted" style="margin-bottom:6px">Terminal</p><pre>'+esc(p.outputs.join("\n"))+'</pre></div>';
+ if(step&&step.kind==="terminal"){
+  html+='<div class="card"><h3>'+esc(step.prompt)+'</h3><div class="row" style="margin-top:12px"><span style="font-family:var(--mono);color:var('+accent+');font-size:13px">operator@cyberrange:~$</span><input type="text" class="term" id="term-'+lab.id+'" data-term="'+lab.id+'" placeholder="'+esc(step.placeholder)+'" value="'+esc(S.inputs[lab.id]||"")+'"></div>';
+  html+='<div class="row" style="margin-top:12px"><button class="btn primary" data-action="lab-run" data-lab="'+lab.id+'">Run</button><button class="btn" data-action="lab-hint" data-lab="'+lab.id+'">Hint (-'+hintCost()+' XP)</button></div>';
+  if(hintShown)html+='<div style="margin-top:12px">'+fb("Hint: "+step.hint,"")+'</div>';
+  if(p.feedback)html+='<div style="margin-top:12px">'+fb(p.feedback,p.tone)+'</div>';
+  html+='</div>';
+ }
+ if(step&&step.kind==="choice"){
+  html+='<div class="card"><h3>'+esc(step.question)+'</h3><div style="margin-top:12px">'+step.options.map(function(opt,i){return '<button class="opt" data-action="lab-choice" data-lab="'+lab.id+'" data-idx="'+i+'">'+esc(opt)+'</button>';}).join("")+'</div>';
+  html+='<div class="row" style="margin-top:12px"><button class="btn" data-action="lab-hint" data-lab="'+lab.id+'">Hint (-'+hintCost()+' XP)</button></div>';
+  if(hintShown)html+='<div style="margin-top:12px">'+fb("Hint: "+step.hint,"")+'</div>';
+  if(p.feedback)html+='<div style="margin-top:12px">'+fb(p.feedback,p.tone)+'</div>';
+  html+='</div>';
+ }
+ if(p.done)html+='<div class="card" style="background:var(--sucsub);border-color:var(--suc)"><h3 style="color:var(--suc)">Complete</h3><p class="sec" style="margin-top:8px">'+esc(lab.debrief)+'</p>'+(lab.badge?'<p class="muted" style="margin-top:8px">Badge earned: '+esc(lab.badge)+'. Reward: +'+lab.reward+' XP plus step XP (x'+hm()+' in hard mode).</p>':'')+'</div>';
+ return html;
+}
+
+function viewSide(side){
+ if(S.selectedLab){var lab=LAB_INDEX[S.selectedLab];if(lab&&lab.side===side&&lab.id.indexOf("-s")!==1){
+   return '<div class="row" style="margin-bottom:4px"><button class="btn" data-action="back-labs">Back to labs</button>'+chip(side==="red"?"Red team":"Blue team",sideVar(side),sideSub(side))+chip(lab.diff,diffVar(lab.diff),"--sub")+'</div>'+labBody(lab);
+ }}
+ var list=DATA.labs.filter(function(l){return l.side===side&&(S.diffFilter==="All"||l.diff===S.diffFilter);});
+ var done=DATA.labs.filter(function(l){return l.side===side&&S.completed.indexOf(l.id)>-1;}).length;
+ var total=DATA.labs.filter(function(l){return l.side===side;}).length;
+ var title=side==="red"?"Red Team labs (offense)":"Blue Team labs (defense)";
+ var intro=side==="red"?"Hands-on offensive scenarios, all simulated against fictional targets. Type commands or pick actions to progress.":"Defensive scenarios, all simulated. Hunt attackers, triage alerts, and run the response.";
+ var html='<div class="card"><h2 style="color:var('+sideVar(side)+')">'+title+'</h2><p class="sec" style="margin-top:8px">'+intro+'</p><p class="muted" style="margin-top:8px">Completed '+done+' of '+total+'.</p></div>';
+ var diffs=["All","Beginner","Intermediate","Advanced","Expert"];
+ html+='<div class="row"><span class="muted">Difficulty</span>'+diffs.map(function(d){return '<button class="btn'+(S.diffFilter===d?" active":"")+'" data-action="set-diff" data-diff="'+d+'">'+d+'</button>';}).join("")+'</div>';
+ if(list.length===0)html+='<p class="sec">No labs match this difficulty filter.</p>';
+ else html+='<div class="grid">'+list.map(labCard).join("")+'</div>';
+ return html;
+}
+
+function viewScenario(){
+ var lvl=S.placement?S.placement.level:0;var mult=1+lvl*0.5;var reward=Math.round(80*mult*hm());
+ var html='<div class="card"><h2>Live scenario generator</h2><p class="sec" style="margin-top:8px">Assembles a fresh incident from fictional parts. Rewards scale to your placement level ('+esc(DATA.levels[lvl])+'): '+reward+' XP for clearing both objectives.</p><div style="margin-top:12px"><button class="btn primary" data-action="scn-gen">Generate live scenario</button></div><p class="muted" style="margin-top:8px">Scenarios cleared this session: '+S.scnWins+'</p></div>';
+ if(S.scnCur){var sc=S.scnCur;
+  html+='<div class="card"><h3>Incident briefing</h3><p class="sec" style="margin-top:8px">'+esc(sc.company)+' (host '+esc(sc.ip)+') has been hit through '+esc(sc.vector)+', with '+esc(sc.target)+' in the blast radius. Complication: '+esc(sc.twist)+'.</p>';
+  html+='<div class="grid2" style="margin-top:14px"><div class="subcard" style="border-color:var(--dng)"><p style="color:var(--dng);font-weight:600">Red objective</p><p class="sec" style="margin-top:6px">Gain and expand access toward '+esc(sc.target)+' via '+esc(sc.vector)+', staying quiet.</p></div><div class="subcard" style="border-color:var(--acc)"><p style="color:var(--acc);font-weight:600">Blue objective</p><p class="sec" style="margin-top:6px">Detect, contain, and evict the intruder before '+esc(sc.target)+' is lost.</p></div></div>';
+  html+='<div class="col" style="gap:14px;margin-top:16px">'+DATA.scn.questions.map(function(q,i){var picked=S.scnPicks[i];var answered=picked!==null;return '<div class="subcard"><p>'+esc(q.question)+'</p><div style="margin-top:10px">'+q.options.map(function(opt,oi){var cls="opt";if(answered){if(oi===q.correct)cls+=" ok";else if(oi===picked)cls+=" err";else cls+=" dim";}return '<button class="'+cls+'" data-action="scn-pick" data-qi="'+i+'" data-oi="'+oi+'">'+esc(opt)+'</button>';}).join("")+'</div></div>';}).join("")+'</div>';
+  if(S.scnDone)html+='<div style="margin-top:14px">'+fb("Both objectives cleared. +"+reward+" XP. Generate another for a fresh incident.","ok")+'</div>';
+  html+='</div>';
+ }
+ return html;
+}
+
+function campaignCard(c){
+ var doneCount=c.stages.filter(function(s){return S.completed.indexOf(s.id)>-1;}).length;var allDone=doneCount===c.stages.length;
+ return '<button class="labcard'+(allDone?" done":"")+'" data-action="open-campaign" data-camp="'+c.id+'"><div class="row">'+chip(c.diff,diffVar(c.diff),"--sub")+chip("Boss campaign","--acc","--accsub")+(allDone?chip("Cleared","--suc","--sucsub"):chip("+"+c.reward+" XP","--tx2","--sub"))+'</div><span style="font-size:15px;font-weight:600">'+esc(c.title)+'</span><span class="muted">'+c.stages.length+' stages &middot; '+doneCount+'/'+c.stages.length+' done &middot; badge: '+esc(c.badge)+'</span></button>';
+}
+
+function viewCampaigns(){
+ if(S.selectedCampaign){
+  var c=null;DATA.campaigns.forEach(function(x){if(x.id===S.selectedCampaign)c=x;});
+  if(c){
+   var active=-1;for(var i=0;i<c.stages.length;i++){if(S.completed.indexOf(c.stages[i].id)===-1){active=i;break;}}
+   var html='<div class="row" style="margin-bottom:4px"><button class="btn" data-action="back-campaigns">Back to campaigns</button>'+chip(c.diff,diffVar(c.diff),"--sub")+chip("Boss campaign","--acc","--accsub")+'</div>';
+   html+='<div class="card"><h2>'+esc(c.title)+'</h2><p class="sec" style="margin-top:8px">'+esc(c.brief)+'</p><p class="muted" style="margin-top:8px">'+(active===-1?"All stages cleared":("Stage "+(active+1)+" of "+c.stages.length))+'</p></div>';
+   html+='<div class="col">';
+   c.stages.forEach(function(s,idx){
+    var sdone=S.completed.indexOf(s.id)>-1;var isActive=idx===active;
+    var statusChip=sdone?chip("Completed","--suc","--sucsub"):(isActive?chip("Active","--acc","--accsub"):chip("Locked","--tx3","--sub"));
+    html+='<div class="card"><div class="row" style="justify-content:space-between"><h3>'+esc(s.title)+' '+chip(s.side==="red"?"Red":"Blue",sideVar(s.side),sideSub(s.side))+'</h3>'+statusChip+'</div>';
+    if(isActive)html+='<div style="margin-top:12px">'+labBody(s)+'</div>';
+    else if(sdone)html+='<p class="muted" style="margin-top:8px">'+esc(s.debrief)+'</p>';
+    else html+='<p class="muted" style="margin-top:8px">Locked - finish the previous stage first.</p>';
+    html+='</div>';
+   });
+   html+='</div>';
+   if(active===-1)html+='<div class="card" style="background:var(--sucsub);border-color:var(--suc)"><h3 style="color:var(--suc)">Campaign complete</h3><p class="sec" style="margin-top:8px">'+esc(c.debrief)+'</p><p class="muted" style="margin-top:8px">Badges earned: '+esc(c.badge)+' + Purple Team. Reward: +'+c.reward+' XP.</p></div>';
+   return html;
+  }
+ }
+ var intro='<div class="card"><h2>Boss campaigns</h2><p class="sec" style="margin-top:8px">Multi-stage missions that chain red-team offense into blue-team defense. Breach a fictional company, then switch sides and investigate your own attack. Finishing one earns the Purple Team badge plus a campaign badge.</p></div>';
+ return intro+'<div class="grid">'+DATA.campaigns.map(campaignCard).join("")+'</div>';
+}
+
+/* ---------- render + events ---------- */
+function render(){
+ document.documentElement.setAttribute("data-theme",S.theme);
+ renderNav();
+ var st=document.getElementById("subtitle");if(st)st.textContent="A gamified, fully simulated cyber range for "+(S.name||"operators")+". Progress saves to this browser.";
+ renderLevelUp();
+ var c=document.getElementById("content");
+ if(S.tab==="home")c.innerHTML=viewHome();
+ else if(S.tab==="quiz")c.innerHTML=viewQuiz();
+ else if(S.tab==="red")c.innerHTML=viewSide("red");
+ else if(S.tab==="blue")c.innerHTML=viewSide("blue");
+ else if(S.tab==="scenario")c.innerHTML=viewScenario();
+ else if(S.tab==="campaigns")c.innerHTML=viewCampaigns();
+}
+
+document.addEventListener("click",function(e){
+ var t=e.target;while(t&&t!==document&&!t.getAttribute("data-action"))t=t.parentNode;
+ if(!t||t===document)return;
+ var a=t.getAttribute("data-action");
+ if(a==="tab"){S.tab=t.getAttribute("data-tab");S.selectedLab=null;S.selectedCampaign=null;render();}
+ else if(a==="theme"){S.theme=S.theme==="dark"?"light":"dark";save();render();}
+ else if(a==="dismiss"){S.levelUp="";render();}
+ else if(a==="toggle-hard"){S.hardMode=!S.hardMode;save();render();}
+ else if(a==="reset"){resetAll();}
+ else if(a==="set-diff"){S.diffFilter=t.getAttribute("data-diff");render();}
+ else if(a==="open-lab"){S.selectedLab=t.getAttribute("data-lab");render();}
+ else if(a==="back-labs"){S.selectedLab=null;render();}
+ else if(a==="open-campaign"){S.selectedCampaign=t.getAttribute("data-camp");render();}
+ else if(a==="back-campaigns"){S.selectedCampaign=null;render();}
+ else if(a==="lab-run"){submitTerminal(LAB_INDEX[t.getAttribute("data-lab")]);}
+ else if(a==="lab-choice"){submitChoice(LAB_INDEX[t.getAttribute("data-lab")],parseInt(t.getAttribute("data-idx"),10));}
+ else if(a==="lab-hint"){useHint(LAB_INDEX[t.getAttribute("data-lab")]);}
+ else if(a==="quiz-pick"){var pos=parseInt(t.getAttribute("data-pos"),10);if(S.quizPicks[pos]===null||S.quizPicks[pos]===undefined){S.quizPicks[pos]=parseInt(t.getAttribute("data-opt"),10);render();}}
+ else if(a==="quiz-next"){S.quizIdx=Math.min(14,S.quizIdx+1);render();}
+ else if(a==="quiz-prev"){S.quizIdx=Math.max(0,S.quizIdx-1);render();}
+ else if(a==="quiz-finish"){finishQuiz();}
+ else if(a==="quiz-retake"){startQuiz();render();}
+ else if(a==="scn-gen"){generateScenario();}
+ else if(a==="scn-pick"){answerScn(parseInt(t.getAttribute("data-qi"),10),parseInt(t.getAttribute("data-oi"),10));}
+});
+document.addEventListener("input",function(e){
+ var t=e.target;if(!t)return;
+ if(t.getAttribute&&t.getAttribute("data-action")==="name"){S.name=t.value;save();var st=document.getElementById("subtitle");if(st)st.textContent="A gamified, fully simulated cyber range for "+(S.name||"operators")+". Progress saves to this browser.";}
+ else if(t.getAttribute&&t.getAttribute("data-term")){S.inputs[t.getAttribute("data-term")]=t.value;}
+});
+document.addEventListener("keydown",function(e){
+ var t=e.target;if(t&&t.getAttribute&&t.getAttribute("data-term")&&e.key==="Enter"){e.preventDefault();submitTerminal(LAB_INDEX[t.getAttribute("data-term")]);}
+});
+
+load();
+render();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(function () {});
+}
+</script>
+</body>
+</html>

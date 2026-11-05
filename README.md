@@ -10,6 +10,8 @@ Daily is five questions from the existing quiz, fixed for the UTC date. Clearing
 
 ATT&CK maps each lab to one public MITRE ATT&CK Enterprise technique. Red labs practice the technique and blue labs practice defending against it. The map is stored in the app and opens the matching lab.
 
+THM mode, on Home / Profile, presents those same labs as rooms: a suggested path, numbered tasks, and a completion flag. It does not change the questions or the scoring, and it is not affiliated with TryHackMe. The switch is included in the progress backup.
+
 **Live site:** https://ella1536von-ops.github.io/ellathehackervon/
 
 ## Add it to an Android home screen

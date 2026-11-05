@@ -1,5 +1,5 @@
 /* Caches the app shell so CyberRange Academy opens offline. Paths are relative for GitHub Pages subpaths. */
-var CACHE = "cyberrange-academy-v5";
+var CACHE = "cyberrange-academy-v6";
 var ASSETS = [
   "./",
   "./index.html",

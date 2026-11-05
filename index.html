@@ -265,7 +265,11 @@ attack:{
 "blue-siem":{tactic:"Lateral Movement",tid:"TA0008",tech:"SMB/Windows Admin Shares",techid:"T1021.002",note:"Primary tag is the lateral SMB move. The lab also walks a macro, a download cradle, exfiltration, and a scheduled task."},
 "blue-harden":{tactic:"Initial Access",tid:"TA0001",tech:"Valid Accounts",techid:"T1078"},
 "blue-pcap":{tactic:"Exfiltration",tid:"TA0010",tech:"Exfiltration Over Alternative Protocol",techid:"T1048"}
-}
+},
+paths:[
+{id:"off",title:"Offensive path",side:"red",rooms:["red-recon","red-phish","red-sqli","red-xss","red-crack","red-dirbust","red-vishing","red-idor","red-privesc"]},
+{id:"def",title:"Defensive path",side:"blue",rooms:["blue-bruteforce","blue-ir","blue-phishtriage","blue-firewall","blue-harden","blue-ioc","blue-malware","blue-siem","blue-pcap"]}
+]
 };
 /* ---------- helpers ---------- */
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -276,8 +280,8 @@ var LAB_INDEX={};
 DATA.labs.forEach(function(l){LAB_INDEX[l.id]=l;});
 DATA.campaigns.forEach(function(c){c.stages.forEach(function(s){LAB_INDEX[s.id]=s;});});
 
-var DEFAULT={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:false,scnWins:0,dailyLast:"",dailyStreak:0};
-var S={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:false,scnWins:0,dailyLast:"",dailyStreak:0,
+var DEFAULT={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:false,scnWins:0,dailyLast:"",dailyStreak:0,thmMode:false};
+var S={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:false,scnWins:0,dailyLast:"",dailyStreak:0,thmMode:false,
 tab:"home",quizSet:null,quizIdx:0,quizPicks:[],quizDone:false,
 dailyKey:"",dailySet:null,dailyPicks:null,dailyChecked:false,dailyMsg:"",
 labProg:{},inputs:{},revealed:[],selectedLab:null,selectedCampaign:null,diffFilter:"All",
@@ -286,9 +290,9 @@ scnCur:null,scnPicks:[null,null],scnDone:false,board:[],levelUp:"",theme:"dark",
 var SAVE_KEY="cyberrange_academy_v2";
 var EXPORT_APP="CyberRange Academy";
 var EXPORT_FORMAT=2;
-function savedProgress(){return {name:S.name,xp:S.xp,redXp:S.redXp,blueXp:S.blueXp,placement:S.placement,completed:S.completed,hardMode:S.hardMode,scnWins:S.scnWins,theme:S.theme,dailyLast:S.dailyLast,dailyStreak:S.dailyStreak};}
+function savedProgress(){return {name:S.name,xp:S.xp,redXp:S.redXp,blueXp:S.blueXp,placement:S.placement,completed:S.completed,hardMode:S.hardMode,scnWins:S.scnWins,theme:S.theme,dailyLast:S.dailyLast,dailyStreak:S.dailyStreak,thmMode:S.thmMode};}
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(savedProgress()));}catch(e){}}
-function load(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var o=JSON.parse(raw);["name","xp","redXp","blueXp","placement","completed","hardMode","scnWins","theme"].forEach(function(k){if(o[k]!==undefined&&o[k]!==null)S[k]=o[k];});if(typeof o.dailyLast==="string")S.dailyLast=o.dailyLast;if(typeof o.dailyStreak==="number"&&isFinite(o.dailyStreak))S.dailyStreak=o.dailyStreak;}catch(e){}}
+function load(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var o=JSON.parse(raw);["name","xp","redXp","blueXp","placement","completed","hardMode","scnWins","theme"].forEach(function(k){if(o[k]!==undefined&&o[k]!==null)S[k]=o[k];});if(typeof o.dailyLast==="string")S.dailyLast=o.dailyLast;if(typeof o.dailyStreak==="number"&&isFinite(o.dailyStreak))S.dailyStreak=o.dailyStreak;if(typeof o.thmMode==="boolean")S.thmMode=o.thmMode;}catch(e){}}
 function setNotice(text,tone){S.notice={text:text,tone:tone||""};render();}
 function exportFileName(d){
  var m=String(d.getMonth()+1),day=String(d.getDate());
@@ -331,6 +335,8 @@ function progressError(p){
  if(!hasOwn(p,"theme")||(p.theme!=="dark"&&p.theme!=="light"))return "This backup has an invalid theme.";
  var daily=dailyFieldsError(p);
  if(daily)return daily;
+ var thm=thmFieldError(p);
+ if(thm)return thm;
  return "";
 }
 function dailyFieldsError(p){
@@ -339,6 +345,11 @@ function dailyFieldsError(p){
  if(hasDate!==hasStreak)return "This backup has incomplete daily progress.";
  if(typeof p.dailyLast!=="string"||(p.dailyLast!==""&&!/^\d{4}-\d{2}-\d{2}$/.test(p.dailyLast)))return "This backup has an invalid daily date.";
  if(!isInt(p.dailyStreak)||p.dailyStreak<0||p.dailyStreak>100000)return "This backup has an invalid daily streak.";
+ return "";
+}
+function thmFieldError(p){
+ if(!hasOwn(p,"thmMode"))return "";
+ if(typeof p.thmMode!=="boolean")return "This backup has an invalid THM-mode setting.";
  return "";
 }
 function exportError(data){
@@ -358,6 +369,7 @@ function applyImported(p){
  S.completed=p.completed.slice();S.hardMode=p.hardMode;S.scnWins=p.scnWins;S.theme=p.theme;
  S.dailyLast=(typeof p.dailyLast==="string")?p.dailyLast:"";
  S.dailyStreak=(isInt(p.dailyStreak)&&p.dailyStreak>=0)?p.dailyStreak:0;
+ S.thmMode=(typeof p.thmMode==="boolean")?p.thmMode:false;
  S.dailyKey="";S.dailySet=null;S.dailyPicks=null;S.dailyChecked=false;S.dailyMsg="";
  S.quizSet=null;S.quizIdx=0;S.quizPicks=[];S.quizDone=false;
  S.labProg={};S.inputs={};S.revealed=[];
@@ -473,7 +485,7 @@ function finishQuiz(){
 }
 function resetAll(){
  S.name="Ashley";S.xp=0;S.redXp=0;S.blueXp=0;S.placement=null;S.completed=[];S.hardMode=false;S.scnWins=0;
- S.dailyLast="";S.dailyStreak=0;S.dailyKey="";S.dailySet=null;S.dailyPicks=null;S.dailyChecked=false;S.dailyMsg="";
+ S.dailyLast="";S.dailyStreak=0;S.dailyKey="";S.dailySet=null;S.dailyPicks=null;S.dailyChecked=false;S.dailyMsg="";S.thmMode=false;
  S.quizSet=null;S.quizIdx=0;S.quizPicks=[];S.quizDone=false;S.labProg={};S.inputs={};S.revealed=[];
  S.selectedLab=null;S.selectedCampaign=null;S.diffFilter="All";S.scnCur=null;S.scnPicks=[null,null];S.scnDone=false;S.board=[];S.levelUp="";
  try{localStorage.removeItem(SAVE_KEY);}catch(e){}
@@ -652,6 +664,7 @@ function viewHome(){
  html+='</div><div style="margin-top:14px"><p class="muted">'+(r.next?("Progress to "+esc(nextName)+" ("+S.xp+" / "+r.next+" XP)"):"Top rank reached")+'</p><div style="margin-top:6px">'+bar(pct,"--acc")+'</div></div></div>';
  html+='<div class="card"><h3>Red vs Blue skill split</h3><p class="muted" style="margin-top:4px">Offense XP '+S.redXp+' &middot; Defense XP '+S.blueXp+'</p><div style="margin-top:10px;height:14px;width:100%;display:flex;border-radius:999px;overflow:hidden;background:var(--sub)"><div style="width:'+redPct+'%;background:var(--dng)"></div><div style="width:'+(100-redPct)+'%;background:var(--acc)"></div></div><div class="row" style="justify-content:space-between;margin-top:6px"><span class="muted" style="color:var(--dng)">Red team</span><span class="muted" style="color:var(--acc)">Blue team</span></div></div>';
  html+='<div class="card"><div class="row" style="justify-content:space-between"><h3>Hard mode</h3><div class="tog" data-action="toggle-hard"><div class="sw'+(S.hardMode?" on":"")+'"><span></span></div><span class="muted">'+(S.hardMode?"On":"Off")+'</span></div></div><p class="sec" style="margin-top:8px">Hard mode hides hints until requested (they always are), raises hint cost to 25 XP, and multiplies all XP by 1.5. Expert labs and the Zero Hour campaign already run with minimal hand-holding and free-form commands.</p></div>';
+ html+='<div class="card"><div class="row" style="justify-content:space-between"><h3>THM mode</h3><div class="tog" data-action="toggle-thm"><div class="sw'+(S.thmMode?" on":"")+'"><span></span></div><span class="muted">'+(S.thmMode?"On":"Off")+'</span></div></div><p class="sec" style="margin-top:8px">Turns each lab into a room: a suggested path, numbered tasks, and a completion flag. Questions, answers, and scoring stay the same. The layout is original and is not affiliated with TryHackMe. The switch is saved with your progress.</p></div>';
  html+='<div class="card"><h3>Badges</h3>';
  if(bl.length===0)html+='<p class="sec" style="margin-top:8px">No badges yet. Take the placement quiz and clear a lab to start earning them.</p>';
  else html+='<div class="row" style="margin-top:10px">'+bl.map(function(b){return chip(b,"--acc","--accsub");}).join("")+'</div>';
@@ -661,7 +674,7 @@ function viewHome(){
  else html+='<div class="col" style="gap:6px;margin-top:10px">'+S.board.map(function(e){return '<div class="row" style="justify-content:space-between"><span class="sec">'+esc(e.label)+'</span><span style="font-family:var(--mono);color:var('+(e.xp>=0?"--suc":"--dng")+')">'+(e.xp>=0?"+":"")+e.xp+' XP</span></div>';}).join("")+'</div>';
  html+='</div>';
  html+='<div class="card" style="background:var(--wrnsub);border-color:var(--wrn)"><h3 style="color:var(--wrn)">Ethics and safety</h3><p class="sec" style="margin-top:6px">Everything here is simulated against fictional targets and reserved IP ranges (10.x, 192.0.2.x, 198.51.100.x, 203.0.113.x) and example domains. Only ever test systems you own or have written permission to test. Unauthorized hacking is illegal.</p><p class="sec" style="margin-top:6px">Practice legally on: TryHackMe, Hack The Box, PortSwigger Web Security Academy, OverTheWire.</p></div>';
- html+='<div class="card"><h3>Backup progress</h3><p class="sec" style="margin-top:6px">Download a JSON file of the progress saved in this browser, or restore a file you saved earlier. Import replaces the progress on this device, including the daily streak. The file is only read as data and is never run. Older backups without a daily streak still import.</p>';
+ html+='<div class="card"><h3>Backup progress</h3><p class="sec" style="margin-top:6px">Download a JSON file of the progress saved in this browser, or restore a file you saved earlier. Import replaces the progress on this device, including the daily streak and THM mode. The file is only read as data and is never run. Older backups that omit the streak or THM mode still import.</p>';
  html+='<div class="row" style="margin-top:12px"><button class="btn" data-action="export-progress">Export progress</button><button class="btn" data-action="pick-import">Import progress</button>';
  html+='<input type="file" id="import-file" accept="application/json,.json" data-import="1" tabindex="-1" aria-hidden="true" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0"></div>';
  if(S.notice)html+='<div style="margin-top:12px">'+fb(S.notice.text,S.notice.tone)+'</div>';
@@ -698,7 +711,7 @@ function attackUrl(techid){var parts=String(techid).split(".");return "https://a
 function attackChip(id){var a=attackOf(id);if(!a)return "";return chip(a.techid,"--tx2","--sub");}
 function labCard(lab){
  var done=S.completed.indexOf(lab.id)>-1;
- return '<button class="labcard'+(done?" done":"")+'" data-action="open-lab" data-lab="'+lab.id+'"><div class="row">'+chip(lab.diff,diffVar(lab.diff),"--sub")+chip(lab.side==="red"?"Red team":"Blue team",sideVar(lab.side),sideSub(lab.side))+attackChip(lab.id)+(done?chip("Completed","--suc","--sucsub"):chip("+"+lab.reward+" XP","--tx2","--sub"))+'</div><span style="font-size:15px;font-weight:600">'+esc(lab.title)+'</span><span class="muted">'+lab.steps.length+' steps &middot; badge: '+esc(lab.badge)+'</span></button>';
+ return '<button class="labcard'+(done?" done":"")+'" data-action="open-lab" data-lab="'+lab.id+'"><div class="row">'+chip(lab.diff,diffVar(lab.diff),"--sub")+chip(lab.side==="red"?"Red team":"Blue team",sideVar(lab.side),sideSub(lab.side))+attackChip(lab.id)+(S.thmMode?chip("Room","--acc","--accsub"):"")+(done?chip("Completed","--suc","--sucsub"):chip("+"+lab.reward+" XP","--tx2","--sub"))+'</div><span style="font-size:15px;font-weight:600">'+esc(lab.title)+'</span><span class="muted">'+lab.steps.length+' '+(S.thmMode?"tasks":"steps")+' &middot; badge: '+esc(lab.badge)+'</span></button>';
 }
 
 function labBody(lab){
@@ -709,7 +722,17 @@ function labBody(lab){
  if(atk)html+='<p class="sec" style="margin-top:8px">ATT&CK '+esc(atk.tid)+' '+esc(atk.tactic)+' &middot; <a href="'+esc(attackUrl(atk.techid))+'" target="_blank" rel="noopener noreferrer">'+esc(atk.techid)+' '+esc(atk.tech)+'</a></p>';
  html+='<p class="sec" style="margin-top:8px">'+esc(lab.brief)+'</p>';
  if(lab.evidence)html+='<div style="margin-top:12px"><p class="muted" style="margin-bottom:6px">Evidence</p><pre>'+esc(lab.evidence)+'</pre></div>';
- html+='<div style="margin-top:12px">'+bar((p.step/lab.steps.length)*100,accent)+'<p class="muted" style="margin-top:6px">Step '+Math.min(p.step+1,lab.steps.length)+' of '+lab.steps.length+'</p></div></div>';
+ html+='<div style="margin-top:12px">'+bar((p.step/lab.steps.length)*100,accent)+'<p class="muted" style="margin-top:6px">'+(S.thmMode?"Task ":"Step ")+Math.min(p.step+1,lab.steps.length)+' of '+lab.steps.length+'</p></div></div>';
+ if(S.thmMode){
+  html+='<div class="card"><h3>Tasks</h3><div class="col" style="gap:6px;margin-top:10px">';
+  lab.steps.forEach(function(st,i){
+   var state=p.done||i<p.step?"Cleared":(i===p.step?"Current":"Locked");
+   var tone=state==="Cleared"?"--suc":(state==="Current"?"--acc":"--tx3");
+   var label=state==="Locked"?"Finish the previous task to open this one.":(st.kind==="terminal"?st.prompt:st.question);
+   html+='<div class="subcard"><div class="row">'+chip("Task "+(i+1),"--tx2","--sub")+chip(state,tone,"--sub")+'</div><p style="margin-top:6px">'+esc(label)+'</p></div>';
+  });
+  html+='</div></div>';
+ }
  if(p.outputs.length>0)html+='<div class="card"><p class="muted" style="margin-bottom:6px">Terminal</p><pre>'+esc(p.outputs.join("\n"))+'</pre></div>';
  if(step&&step.kind==="terminal"){
   html+='<div class="card"><h3>'+esc(step.prompt)+'</h3><div class="row" style="margin-top:12px"><span style="font-family:var(--mono);color:var('+accent+');font-size:13px">operator@cyberrange:~$</span><input type="text" class="term" id="term-'+lab.id+'" data-term="'+lab.id+'" placeholder="'+esc(step.placeholder)+'" value="'+esc(S.inputs[lab.id]||"")+'"></div>';
@@ -725,7 +748,12 @@ function labBody(lab){
   if(p.feedback)html+='<div style="margin-top:12px">'+fb(p.feedback,p.tone)+'</div>';
   html+='</div>';
  }
- if(p.done)html+='<div class="card" style="background:var(--sucsub);border-color:var(--suc)"><h3 style="color:var(--suc)">Complete</h3><p class="sec" style="margin-top:8px">'+esc(lab.debrief)+'</p>'+(lab.badge?'<p class="muted" style="margin-top:8px">Badge earned: '+esc(lab.badge)+'. Reward: +'+lab.reward+' XP plus step XP (x'+hm()+' in hard mode).</p>':'')+'</div>';
+ if(p.done){
+  html+='<div class="card" style="background:var(--sucsub);border-color:var(--suc)"><h3 style="color:var(--suc)">'+(S.thmMode?"Room complete":"Complete")+'</h3><p class="sec" style="margin-top:8px">'+esc(lab.debrief)+'</p>';
+  if(S.thmMode)html+='<p class="muted" style="margin-top:8px">Room flag</p><pre>FLAG{'+esc(lab.id)+'}</pre>';
+  if(lab.badge)html+='<p class="muted" style="margin-top:8px">Badge earned: '+esc(lab.badge)+'. Reward: +'+lab.reward+' XP plus step XP (x'+hm()+' in hard mode).</p>';
+  html+='</div>';
+ }
  return html;
 }
 
@@ -739,6 +767,15 @@ function viewSide(side){
  var title=side==="red"?"Red Team labs (offense)":"Blue Team labs (defense)";
  var intro=side==="red"?"Hands-on offensive scenarios, all simulated against fictional targets. Type commands or pick actions to progress.":"Defensive scenarios, all simulated. Hunt attackers, triage alerts, and run the response.";
  var html='<div class="card"><h2 style="color:var('+sideVar(side)+')">'+title+'</h2><p class="sec" style="margin-top:8px">'+intro+'</p><p class="muted" style="margin-top:8px">Completed '+done+' of '+total+'.</p></div>';
+ if(S.thmMode){
+  var path=null;DATA.paths.forEach(function(item){if(item.side===side)path=item;});
+  if(path){
+   var pathDone=path.rooms.filter(function(id){return S.completed.indexOf(id)>-1;}).length;
+   html+='<div class="card"><h3>'+esc(path.title)+'</h3><p class="muted" style="margin-top:6px">Suggested room order. '+pathDone+' of '+path.rooms.length+' cleared. Any room can still be opened on its own.</p><div style="margin-top:10px">';
+   html+=path.rooms.map(function(id,i){var room=LAB_INDEX[id];var cleared=S.completed.indexOf(id)>-1;return '<button class="opt" data-action="open-lab" data-lab="'+id+'">'+(i+1)+'. '+esc(room.title)+(cleared?" (cleared)":"")+'</button>';}).join("");
+   html+='</div></div>';
+  }
+ }
  var diffs=["All","Beginner","Intermediate","Advanced","Expert"];
  html+='<div class="row"><span class="muted">Difficulty</span>'+diffs.map(function(d){return '<button class="btn'+(S.diffFilter===d?" active":"")+'" data-action="set-diff" data-diff="'+d+'">'+d+'</button>';}).join("")+'</div>';
  if(list.length===0)html+='<p class="sec">No labs match this difficulty filter.</p>';
@@ -816,6 +853,7 @@ document.addEventListener("click",function(e){
  else if(a==="theme"){S.theme=S.theme==="dark"?"light":"dark";save();render();}
  else if(a==="dismiss"){S.levelUp="";render();}
  else if(a==="toggle-hard"){S.hardMode=!S.hardMode;save();render();}
+ else if(a==="toggle-thm"){S.thmMode=!S.thmMode;save();render();}
  else if(a==="export-progress"){exportProgress();}
  else if(a==="pick-import"){var inp=document.getElementById("import-file");if(inp)inp.click();}
  else if(a==="reset"){S.notice=null;resetAll();}

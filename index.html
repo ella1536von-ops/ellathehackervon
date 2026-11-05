@@ -246,11 +246,94 @@ var DEFAULT={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],har
 var S={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:false,scnWins:0,
 tab:"home",quizSet:null,quizIdx:0,quizPicks:[],quizDone:false,
 labProg:{},inputs:{},revealed:[],selectedLab:null,selectedCampaign:null,diffFilter:"All",
-scnCur:null,scnPicks:[null,null],scnDone:false,board:[],levelUp:"",theme:"dark"};
+scnCur:null,scnPicks:[null,null],scnDone:false,board:[],levelUp:"",theme:"dark",notice:null};
 
 var SAVE_KEY="cyberrange_academy_v2";
-function save(){try{var o={name:S.name,xp:S.xp,redXp:S.redXp,blueXp:S.blueXp,placement:S.placement,completed:S.completed,hardMode:S.hardMode,scnWins:S.scnWins,theme:S.theme};localStorage.setItem(SAVE_KEY,JSON.stringify(o));}catch(e){}}
+var EXPORT_APP="CyberRange Academy";
+var EXPORT_FORMAT=1;
+function savedProgress(){return {name:S.name,xp:S.xp,redXp:S.redXp,blueXp:S.blueXp,placement:S.placement,completed:S.completed,hardMode:S.hardMode,scnWins:S.scnWins,theme:S.theme};}
+function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(savedProgress()));}catch(e){}}
 function load(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var o=JSON.parse(raw);["name","xp","redXp","blueXp","placement","completed","hardMode","scnWins","theme"].forEach(function(k){if(o[k]!==undefined&&o[k]!==null)S[k]=o[k];});}catch(e){}}
+function setNotice(text,tone){S.notice={text:text,tone:tone||""};render();}
+function exportFileName(d){
+ var m=String(d.getMonth()+1),day=String(d.getDate());
+ if(m.length<2)m="0"+m;if(day.length<2)day="0"+day;
+ return "cyberrange-progress-"+d.getFullYear()+"-"+m+"-"+day+".json";
+}
+function exportProgress(){
+ var when=new Date();
+ var name=exportFileName(when);
+ var payload={app:EXPORT_APP,formatVersion:EXPORT_FORMAT,exportedAt:when.toISOString(),progress:savedProgress()};
+ var blob=new Blob([JSON.stringify(payload,null,2)+"\n"],{type:"application/json"});
+ var url=URL.createObjectURL(blob);
+ var a=document.createElement("a");
+ a.href=url;a.download=name;a.rel="noopener";
+ document.body.appendChild(a);
+ a.click();
+ setTimeout(function(){if(a.parentNode)a.parentNode.removeChild(a);URL.revokeObjectURL(url);},60000);
+ setNotice("Exported "+name+".","ok");
+}
+function isNum(n){return typeof n==="number"&&isFinite(n);}
+function hasOwn(obj,key){return Object.prototype.hasOwnProperty.call(obj,key);}
+function isInt(n){return isNum(n)&&Math.floor(n)===n;}
+function validLabId(id){return typeof id==="string"&&id.length>0&&id.length<=64&&/^[A-Za-z0-9_-]+$/.test(id);}
+function progressError(p){
+ if(!p||typeof p!=="object"||Array.isArray(p))return "This backup is missing progress data.";
+ if(!hasOwn(p,"name")||typeof p.name!=="string"||p.name.length>500)return "This backup has an invalid player name.";
+ if(!hasOwn(p,"xp")||!isNum(p.xp)||p.xp<0||p.xp>10000000)return "This backup has invalid total XP.";
+ if(!hasOwn(p,"redXp")||!isNum(p.redXp)||p.redXp<0||p.redXp>10000000)return "This backup has invalid red team XP.";
+ if(!hasOwn(p,"blueXp")||!isNum(p.blueXp)||p.blueXp<0||p.blueXp>10000000)return "This backup has invalid blue team XP.";
+ if(!hasOwn(p,"placement"))return "This backup has invalid placement data.";
+ if(p.placement!==null){
+  if(!p.placement||typeof p.placement!=="object"||Array.isArray(p.placement))return "This backup has invalid placement data.";
+  if(!hasOwn(p.placement,"score")||!isInt(p.placement.score)||p.placement.score<0||p.placement.score>15)return "This backup has an invalid placement score.";
+  if(!hasOwn(p.placement,"level")||!isInt(p.placement.level)||p.placement.level<0||p.placement.level>5)return "This backup has an invalid placement level.";
+ }
+ if(!hasOwn(p,"completed")||!Array.isArray(p.completed)||p.completed.length>400)return "This backup has an invalid completed-labs list.";
+ for(var i=0;i<p.completed.length;i++){if(!validLabId(p.completed[i]))return "This backup has an invalid completed lab.";}
+ if(!hasOwn(p,"hardMode")||typeof p.hardMode!=="boolean")return "This backup has an invalid hard-mode setting.";
+ if(!hasOwn(p,"scnWins")||!isInt(p.scnWins)||p.scnWins<0||p.scnWins>1000000)return "This backup has invalid scenario wins.";
+ if(!hasOwn(p,"theme")||(p.theme!=="dark"&&p.theme!=="light"))return "This backup has an invalid theme.";
+ return "";
+}
+function exportError(data){
+ if(!data||typeof data!=="object"||Array.isArray(data))return "This file is not a CyberRange Academy progress export.";
+ if(!hasOwn(data,"app")||data.app!==EXPORT_APP||!hasOwn(data,"formatVersion"))return "This file is not a CyberRange Academy progress export.";
+ if(data.formatVersion!==EXPORT_FORMAT)return "This backup uses an unsupported format.";
+ if(!hasOwn(data,"exportedAt")||typeof data.exportedAt!=="string"||data.exportedAt.length<16||data.exportedAt.length>40||isNaN(Date.parse(data.exportedAt)))return "This backup has an invalid export time.";
+ if(!hasOwn(data,"progress"))return "This backup is missing progress data.";
+ return progressError(data.progress);
+}
+function applyImported(p){
+ S.name=p.name;S.xp=p.xp;S.redXp=p.redXp;S.blueXp=p.blueXp;
+ S.placement=p.placement?{score:p.placement.score,level:p.placement.level}:null;
+ S.completed=p.completed.slice();S.hardMode=p.hardMode;S.scnWins=p.scnWins;S.theme=p.theme;
+ S.quizSet=null;S.quizIdx=0;S.quizPicks=[];S.quizDone=false;
+ S.labProg={};S.inputs={};S.revealed=[];
+ S.selectedLab=null;S.selectedCampaign=null;
+ S.scnCur=null;S.scnPicks=[null,null];S.scnDone=false;S.board=[];S.levelUp="";
+}
+function importProgressText(text){
+ var data;
+ try{data=JSON.parse(String(text).replace(/^\uFEFF/,""));}catch(e){setNotice("That file is not valid JSON.","err");return;}
+ var err=exportError(data);
+ if(err){setNotice(err,"err");return;}
+ var who=String(data.progress.name).replace(/\s+/g," ").trim();
+ var ask=who?("Replace the progress saved in this browser with the backup for "+who+" ("+data.progress.xp+" XP)?"):("Replace the progress saved in this browser with this backup ("+data.progress.xp+" XP)?");
+ if(!window.confirm(ask)){setNotice("Import cancelled. Current progress was kept.","");return;}
+ applyImported(data.progress);
+ save();
+ var n=data.progress.completed.length;
+ setNotice("Progress imported. Restored "+(who||"operator")+" with "+data.progress.xp+" XP and "+n+" completed lab"+(n===1?"":"s")+".","ok");
+}
+function readImportFile(file){
+ if(!file)return;
+ if(file.size>500000){setNotice("That file is too large to be a progress backup.","err");return;}
+ var reader=new FileReader();
+ reader.onerror=function(){setNotice("Could not read that file.","err");};
+ reader.onload=function(){importProgressText(typeof reader.result==="string"?reader.result:"");};
+ reader.readAsText(file);
+}
 
 function hm(){return S.hardMode?1.5:1;}
 function stepXp(){return Math.round(15*hm());}
@@ -398,7 +481,12 @@ function viewHome(){
  else html+='<div class="col" style="gap:6px;margin-top:10px">'+S.board.map(function(e){return '<div class="row" style="justify-content:space-between"><span class="sec">'+esc(e.label)+'</span><span style="font-family:var(--mono);color:var('+(e.xp>=0?"--suc":"--dng")+')">'+(e.xp>=0?"+":"")+e.xp+' XP</span></div>';}).join("")+'</div>';
  html+='</div>';
  html+='<div class="card" style="background:var(--wrnsub);border-color:var(--wrn)"><h3 style="color:var(--wrn)">Ethics and safety</h3><p class="sec" style="margin-top:6px">Everything here is simulated against fictional targets and reserved IP ranges (10.x, 192.0.2.x, 198.51.100.x, 203.0.113.x) and example domains. Only ever test systems you own or have written permission to test. Unauthorized hacking is illegal.</p><p class="sec" style="margin-top:6px">Practice legally on: TryHackMe, Hack The Box, PortSwigger Web Security Academy, OverTheWire.</p></div>';
- html+='<div class="row"><button class="btn" data-action="reset">Reset all progress</button><span class="muted">Progress saves to this browser (localStorage). Reset clears it everywhere.</span></div>';
+ html+='<div class="card"><h3>Backup progress</h3><p class="sec" style="margin-top:6px">Download a JSON file of the progress saved in this browser, or restore a file you saved earlier. Import replaces the progress on this device. The file is only read as data and is never run.</p>';
+ html+='<div class="row" style="margin-top:12px"><button class="btn" data-action="export-progress">Export progress</button><button class="btn" data-action="pick-import">Import progress</button>';
+ html+='<input type="file" id="import-file" accept="application/json,.json" data-import="1" tabindex="-1" aria-hidden="true" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0"></div>';
+ if(S.notice)html+='<div style="margin-top:12px">'+fb(S.notice.text,S.notice.tone)+'</div>';
+ html+='</div>';
+ html+='<div class="row"><button class="btn" data-action="reset">Reset all progress</button><span class="muted">Progress saves to this browser (localStorage). Export a backup above to keep a copy. Reset clears it in this browser.</span></div>';
  html+='</div>';
  return html;
 }
@@ -535,11 +623,13 @@ document.addEventListener("click",function(e){
  var t=e.target;while(t&&t!==document&&!t.getAttribute("data-action"))t=t.parentNode;
  if(!t||t===document)return;
  var a=t.getAttribute("data-action");
- if(a==="tab"){S.tab=t.getAttribute("data-tab");S.selectedLab=null;S.selectedCampaign=null;render();}
+ if(a==="tab"){S.tab=t.getAttribute("data-tab");S.selectedLab=null;S.selectedCampaign=null;S.notice=null;render();}
  else if(a==="theme"){S.theme=S.theme==="dark"?"light":"dark";save();render();}
  else if(a==="dismiss"){S.levelUp="";render();}
  else if(a==="toggle-hard"){S.hardMode=!S.hardMode;save();render();}
- else if(a==="reset"){resetAll();}
+ else if(a==="export-progress"){exportProgress();}
+ else if(a==="pick-import"){var inp=document.getElementById("import-file");if(inp)inp.click();}
+ else if(a==="reset"){S.notice=null;resetAll();}
  else if(a==="set-diff"){S.diffFilter=t.getAttribute("data-diff");render();}
  else if(a==="open-lab"){S.selectedLab=t.getAttribute("data-lab");render();}
  else if(a==="back-labs"){S.selectedLab=null;render();}
@@ -555,6 +645,12 @@ document.addEventListener("click",function(e){
  else if(a==="quiz-retake"){startQuiz();render();}
  else if(a==="scn-gen"){generateScenario();}
  else if(a==="scn-pick"){answerScn(parseInt(t.getAttribute("data-qi"),10),parseInt(t.getAttribute("data-oi"),10));}
+});
+document.addEventListener("change",function(e){
+ var t=e.target;if(!t||!t.getAttribute||t.getAttribute("data-import")!=="1")return;
+ var file=t.files&&t.files[0];
+ t.value="";
+ if(file)readImportFile(file);
 });
 document.addEventListener("input",function(e){
  var t=e.target;if(!t)return;

@@ -245,7 +245,27 @@ rivals:[
 {name:"Chris Dalton",xp:400,labs:5},
 {name:"Noah Pell",xp:180,labs:3},
 {name:"Jamie Frost",xp:40,labs:1}
-]
+],
+attack:{
+"red-recon":{tactic:"Reconnaissance",tid:"TA0043",tech:"Active Scanning",techid:"T1595"},
+"red-sqli":{tactic:"Initial Access",tid:"TA0001",tech:"Exploit Public-Facing Application",techid:"T1190"},
+"red-xss":{tactic:"Execution",tid:"TA0002",tech:"JavaScript",techid:"T1059.007"},
+"red-crack":{tactic:"Credential Access",tid:"TA0006",tech:"Password Cracking",techid:"T1110.002"},
+"red-phish":{tactic:"Initial Access",tid:"TA0001",tech:"Spearphishing Link",techid:"T1566.002"},
+"red-dirbust":{tactic:"Discovery",tid:"TA0007",tech:"File and Directory Discovery",techid:"T1083"},
+"red-idor":{tactic:"Collection",tid:"TA0009",tech:"Data from Information Repositories",techid:"T1213"},
+"red-privesc":{tactic:"Privilege Escalation",tid:"TA0004",tech:"Sudo and Sudo Caching",techid:"T1548.003"},
+"red-vishing":{tactic:"Initial Access",tid:"TA0001",tech:"Spearphishing Voice",techid:"T1566.004"},
+"blue-bruteforce":{tactic:"Credential Access",tid:"TA0006",tech:"Password Guessing",techid:"T1110.001"},
+"blue-phishtriage":{tactic:"Initial Access",tid:"TA0001",tech:"Spearphishing Link",techid:"T1566.002"},
+"blue-firewall":{tactic:"Credential Access",tid:"TA0006",tech:"Password Guessing",techid:"T1110.001"},
+"blue-ir":{tactic:"Command and Control",tid:"TA0011",tech:"Application Layer Protocol",techid:"T1071"},
+"blue-ioc":{tactic:"Command and Control",tid:"TA0011",tech:"Non-Application Layer Protocol",techid:"T1095"},
+"blue-malware":{tactic:"Persistence",tid:"TA0003",tech:"Registry Run Keys / Startup Folder",techid:"T1547.001"},
+"blue-siem":{tactic:"Lateral Movement",tid:"TA0008",tech:"SMB/Windows Admin Shares",techid:"T1021.002",note:"Primary tag is the lateral SMB move. The lab also walks a macro, a download cradle, exfiltration, and a scheduled task."},
+"blue-harden":{tactic:"Initial Access",tid:"TA0001",tech:"Valid Accounts",techid:"T1078"},
+"blue-pcap":{tactic:"Exfiltration",tid:"TA0010",tech:"Exfiltration Over Alternative Protocol",techid:"T1048"}
+}
 };
 /* ---------- helpers ---------- */
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -566,6 +586,31 @@ function viewDaily(){
  if(S.dailyMsg)html+=fb(S.dailyMsg,S.dailyChecked?"err":"");
  return html;
 }
+var TACTIC_ORDER=[["TA0043","Reconnaissance"],["TA0001","Initial Access"],["TA0002","Execution"],["TA0003","Persistence"],["TA0004","Privilege Escalation"],["TA0006","Credential Access"],["TA0007","Discovery"],["TA0008","Lateral Movement"],["TA0009","Collection"],["TA0011","Command and Control"],["TA0010","Exfiltration"]];
+function viewAttack(){
+ var mapped=DATA.labs.filter(function(l){return !!attackOf(l.id);});
+ var done=mapped.filter(function(l){return S.completed.indexOf(l.id)>-1;}).length;
+ var html='<div class="card"><h2>ATT&CK map</h2><p class="sec" style="margin-top:8px">Every lab is tagged with one Enterprise ATT&CK technique. Red-team labs practice the technique. Blue-team labs practice defending against it. The IDs are the public MITRE names, stored in the app so the map works offline.</p><p class="muted" style="margin-top:8px">Mapped labs cleared: '+done+' of '+mapped.length+'.</p></div>';
+ TACTIC_ORDER.forEach(function(tac){
+  var labs=mapped.filter(function(l){return attackOf(l.id).tid===tac[0];});
+  if(!labs.length)return;
+  var groups=[];
+  labs.forEach(function(l){
+   var a=attackOf(l.id);var g=null;
+   groups.forEach(function(x){if(x.techid===a.techid)g=x;});
+   if(!g){g={techid:a.techid,tech:a.tech,note:a.note||"",labs:[]};groups.push(g);}
+   g.labs.push(l);
+  });
+  html+='<div class="card"><h3>'+esc(tac[1])+' '+chip(tac[0],"--acc","--accsub")+'</h3>';
+  groups.forEach(function(g){
+   html+='<div class="subcard" style="margin-top:10px"><p style="font-weight:600"><a href="'+esc(attackUrl(g.techid))+'" target="_blank" rel="noopener noreferrer">'+esc(g.techid)+'</a> '+esc(g.tech)+'</p>';
+   if(g.note)html+='<p class="muted" style="margin-top:6px">'+esc(g.note)+'</p>';
+   html+='<div style="margin-top:8px">'+g.labs.map(function(l){var cleared=S.completed.indexOf(l.id)>-1;return '<button class="opt" data-action="open-attack-lab" data-lab="'+l.id+'">'+chip(l.side==="red"?"Red":"Blue",sideVar(l.side),sideSub(l.side))+' '+esc(l.title)+(cleared?" (cleared)":"")+'</button>';}).join("")+'</div></div>';
+  });
+  html+='</div>';
+ });
+ return html;
+}
 function leaderboardRows(){
  var youName=(S.name||"").replace(/\s+/g," ").trim()||"Operator";
  var rows=DATA.rivals.map(function(r){return {name:r.name,xp:r.xp,labs:r.labs,you:false,rank:rankFor(r.xp).name};});
@@ -584,7 +629,7 @@ function viewLeaderboard(){
  return html;
 }
 function renderNav(){
- var tabs=[["home","Home / Profile"],["ladder","Leaderboard"],["daily","Daily"],["quiz","Placement Quiz"],["red","Red Team"],["blue","Blue Team"],["scenario","Live Scenario"],["campaigns","Campaigns"]];
+ var tabs=[["home","Home / Profile"],["ladder","Leaderboard"],["daily","Daily"],["attack","ATT&CK"],["quiz","Placement Quiz"],["red","Red Team"],["blue","Blue Team"],["scenario","Live Scenario"],["campaigns","Campaigns"]];
  document.getElementById("nav").innerHTML=tabs.map(function(t){return '<button class="btn'+(S.tab===t[0]?" active":"")+'" data-action="tab" data-tab="'+t[0]+'">'+t[1]+'</button>';}).join("");
 }
 function renderLevelUp(){
@@ -648,15 +693,21 @@ function viewQuiz(){
  return html;
 }
 
+function attackOf(id){return DATA.attack[id]||null;}
+function attackUrl(techid){var parts=String(techid).split(".");return "https://attack.mitre.org/techniques/"+parts[0]+"/"+(parts[1]?parts[1]+"/":"");}
+function attackChip(id){var a=attackOf(id);if(!a)return "";return chip(a.techid,"--tx2","--sub");}
 function labCard(lab){
  var done=S.completed.indexOf(lab.id)>-1;
- return '<button class="labcard'+(done?" done":"")+'" data-action="open-lab" data-lab="'+lab.id+'"><div class="row">'+chip(lab.diff,diffVar(lab.diff),"--sub")+chip(lab.side==="red"?"Red team":"Blue team",sideVar(lab.side),sideSub(lab.side))+(done?chip("Completed","--suc","--sucsub"):chip("+"+lab.reward+" XP","--tx2","--sub"))+'</div><span style="font-size:15px;font-weight:600">'+esc(lab.title)+'</span><span class="muted">'+lab.steps.length+' steps &middot; badge: '+esc(lab.badge)+'</span></button>';
+ return '<button class="labcard'+(done?" done":"")+'" data-action="open-lab" data-lab="'+lab.id+'"><div class="row">'+chip(lab.diff,diffVar(lab.diff),"--sub")+chip(lab.side==="red"?"Red team":"Blue team",sideVar(lab.side),sideSub(lab.side))+attackChip(lab.id)+(done?chip("Completed","--suc","--sucsub"):chip("+"+lab.reward+" XP","--tx2","--sub"))+'</div><span style="font-size:15px;font-weight:600">'+esc(lab.title)+'</span><span class="muted">'+lab.steps.length+' steps &middot; badge: '+esc(lab.badge)+'</span></button>';
 }
 
 function labBody(lab){
  var p=prog(lab.id);var accent=sideVar(lab.side);var key=lab.id+":"+p.step;var hintShown=S.revealed.indexOf(key)>-1;
  var step=p.done?null:lab.steps[p.step];
- var html='<div class="card" style="border-color:var('+accent+')"><h2>'+esc(lab.title)+'</h2><p class="sec" style="margin-top:8px">'+esc(lab.brief)+'</p>';
+ var atk=attackOf(lab.id);
+ var html='<div class="card" style="border-color:var('+accent+')"><h2>'+esc(lab.title)+'</h2>';
+ if(atk)html+='<p class="sec" style="margin-top:8px">ATT&CK '+esc(atk.tid)+' '+esc(atk.tactic)+' &middot; <a href="'+esc(attackUrl(atk.techid))+'" target="_blank" rel="noopener noreferrer">'+esc(atk.techid)+' '+esc(atk.tech)+'</a></p>';
+ html+='<p class="sec" style="margin-top:8px">'+esc(lab.brief)+'</p>';
  if(lab.evidence)html+='<div style="margin-top:12px"><p class="muted" style="margin-bottom:6px">Evidence</p><pre>'+esc(lab.evidence)+'</pre></div>';
  html+='<div style="margin-top:12px">'+bar((p.step/lab.steps.length)*100,accent)+'<p class="muted" style="margin-top:6px">Step '+Math.min(p.step+1,lab.steps.length)+' of '+lab.steps.length+'</p></div></div>';
  if(p.outputs.length>0)html+='<div class="card"><p class="muted" style="margin-bottom:6px">Terminal</p><pre>'+esc(p.outputs.join("\n"))+'</pre></div>';
@@ -749,6 +800,7 @@ function render(){
  if(S.tab==="home")c.innerHTML=viewHome();
  else if(S.tab==="ladder")c.innerHTML=viewLeaderboard();
  else if(S.tab==="daily")c.innerHTML=viewDaily();
+ else if(S.tab==="attack")c.innerHTML=viewAttack();
  else if(S.tab==="quiz")c.innerHTML=viewQuiz();
  else if(S.tab==="red")c.innerHTML=viewSide("red");
  else if(S.tab==="blue")c.innerHTML=viewSide("blue");
@@ -769,6 +821,7 @@ document.addEventListener("click",function(e){
  else if(a==="reset"){S.notice=null;resetAll();}
  else if(a==="set-diff"){S.diffFilter=t.getAttribute("data-diff");render();}
  else if(a==="open-lab"){S.selectedLab=t.getAttribute("data-lab");render();}
+ else if(a==="open-attack-lab"){var aid=t.getAttribute("data-lab");var alab=LAB_INDEX[aid];if(alab){S.tab=alab.side;S.selectedLab=aid;S.selectedCampaign=null;}render();}
  else if(a==="back-labs"){S.selectedLab=null;render();}
  else if(a==="open-campaign"){S.selectedCampaign=t.getAttribute("data-camp");render();}
  else if(a==="back-campaigns"){S.selectedCampaign=null;render();}

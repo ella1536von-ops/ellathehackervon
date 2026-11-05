@@ -8,6 +8,8 @@ The Leaderboard compares that saved XP with fictional classmates. It stays on th
 
 Daily is five questions from the existing quiz, fixed for the UTC date. Clearing them once that day raises a streak. The date and streak are part of the progress backup. Older backup files that have no streak still import.
 
+ATT&CK maps each lab to one public MITRE ATT&CK Enterprise technique. Red labs practice the technique and blue labs practice defending against it. The map is stored in the app and opens the matching lab.
+
 **Live site:** https://ella1536von-ops.github.io/ellathehackervon/
 
 ## Add it to an Android home screen

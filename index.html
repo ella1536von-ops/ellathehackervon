@@ -256,18 +256,19 @@ var LAB_INDEX={};
 DATA.labs.forEach(function(l){LAB_INDEX[l.id]=l;});
 DATA.campaigns.forEach(function(c){c.stages.forEach(function(s){LAB_INDEX[s.id]=s;});});
 
-var DEFAULT={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:false,scnWins:0};
-var S={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:false,scnWins:0,
+var DEFAULT={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:false,scnWins:0,dailyLast:"",dailyStreak:0};
+var S={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:false,scnWins:0,dailyLast:"",dailyStreak:0,
 tab:"home",quizSet:null,quizIdx:0,quizPicks:[],quizDone:false,
+dailyKey:"",dailySet:null,dailyPicks:null,dailyChecked:false,dailyMsg:"",
 labProg:{},inputs:{},revealed:[],selectedLab:null,selectedCampaign:null,diffFilter:"All",
 scnCur:null,scnPicks:[null,null],scnDone:false,board:[],levelUp:"",theme:"dark",notice:null};
 
 var SAVE_KEY="cyberrange_academy_v2";
 var EXPORT_APP="CyberRange Academy";
-var EXPORT_FORMAT=1;
-function savedProgress(){return {name:S.name,xp:S.xp,redXp:S.redXp,blueXp:S.blueXp,placement:S.placement,completed:S.completed,hardMode:S.hardMode,scnWins:S.scnWins,theme:S.theme};}
+var EXPORT_FORMAT=2;
+function savedProgress(){return {name:S.name,xp:S.xp,redXp:S.redXp,blueXp:S.blueXp,placement:S.placement,completed:S.completed,hardMode:S.hardMode,scnWins:S.scnWins,theme:S.theme,dailyLast:S.dailyLast,dailyStreak:S.dailyStreak};}
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(savedProgress()));}catch(e){}}
-function load(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var o=JSON.parse(raw);["name","xp","redXp","blueXp","placement","completed","hardMode","scnWins","theme"].forEach(function(k){if(o[k]!==undefined&&o[k]!==null)S[k]=o[k];});}catch(e){}}
+function load(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var o=JSON.parse(raw);["name","xp","redXp","blueXp","placement","completed","hardMode","scnWins","theme"].forEach(function(k){if(o[k]!==undefined&&o[k]!==null)S[k]=o[k];});if(typeof o.dailyLast==="string")S.dailyLast=o.dailyLast;if(typeof o.dailyStreak==="number"&&isFinite(o.dailyStreak))S.dailyStreak=o.dailyStreak;}catch(e){}}
 function setNotice(text,tone){S.notice={text:text,tone:tone||""};render();}
 function exportFileName(d){
  var m=String(d.getMonth()+1),day=String(d.getDate());
@@ -308,20 +309,36 @@ function progressError(p){
  if(!hasOwn(p,"hardMode")||typeof p.hardMode!=="boolean")return "This backup has an invalid hard-mode setting.";
  if(!hasOwn(p,"scnWins")||!isInt(p.scnWins)||p.scnWins<0||p.scnWins>1000000)return "This backup has invalid scenario wins.";
  if(!hasOwn(p,"theme")||(p.theme!=="dark"&&p.theme!=="light"))return "This backup has an invalid theme.";
+ var daily=dailyFieldsError(p);
+ if(daily)return daily;
+ return "";
+}
+function dailyFieldsError(p){
+ var hasDate=hasOwn(p,"dailyLast"),hasStreak=hasOwn(p,"dailyStreak");
+ if(!hasDate&&!hasStreak)return "";
+ if(hasDate!==hasStreak)return "This backup has incomplete daily progress.";
+ if(typeof p.dailyLast!=="string"||(p.dailyLast!==""&&!/^\d{4}-\d{2}-\d{2}$/.test(p.dailyLast)))return "This backup has an invalid daily date.";
+ if(!isInt(p.dailyStreak)||p.dailyStreak<0||p.dailyStreak>100000)return "This backup has an invalid daily streak.";
  return "";
 }
 function exportError(data){
  if(!data||typeof data!=="object"||Array.isArray(data))return "This file is not a CyberRange Academy progress export.";
  if(!hasOwn(data,"app")||data.app!==EXPORT_APP||!hasOwn(data,"formatVersion"))return "This file is not a CyberRange Academy progress export.";
- if(data.formatVersion!==EXPORT_FORMAT)return "This backup uses an unsupported format.";
+ if(data.formatVersion!==1&&data.formatVersion!==2)return "This backup uses an unsupported format.";
  if(!hasOwn(data,"exportedAt")||typeof data.exportedAt!=="string"||data.exportedAt.length<16||data.exportedAt.length>40||isNaN(Date.parse(data.exportedAt)))return "This backup has an invalid export time.";
  if(!hasOwn(data,"progress"))return "This backup is missing progress data.";
- return progressError(data.progress);
+ var err=progressError(data.progress);
+ if(err)return err;
+ if(data.formatVersion===2&&(!hasOwn(data.progress,"dailyLast")||!hasOwn(data.progress,"dailyStreak")))return "This backup is missing daily progress.";
+ return "";
 }
 function applyImported(p){
  S.name=p.name;S.xp=p.xp;S.redXp=p.redXp;S.blueXp=p.blueXp;
  S.placement=p.placement?{score:p.placement.score,level:p.placement.level}:null;
  S.completed=p.completed.slice();S.hardMode=p.hardMode;S.scnWins=p.scnWins;S.theme=p.theme;
+ S.dailyLast=(typeof p.dailyLast==="string")?p.dailyLast:"";
+ S.dailyStreak=(isInt(p.dailyStreak)&&p.dailyStreak>=0)?p.dailyStreak:0;
+ S.dailyKey="";S.dailySet=null;S.dailyPicks=null;S.dailyChecked=false;S.dailyMsg="";
  S.quizSet=null;S.quizIdx=0;S.quizPicks=[];S.quizDone=false;
  S.labProg={};S.inputs={};S.revealed=[];
  S.selectedLab=null;S.selectedCampaign=null;
@@ -436,6 +453,7 @@ function finishQuiz(){
 }
 function resetAll(){
  S.name="Ashley";S.xp=0;S.redXp=0;S.blueXp=0;S.placement=null;S.completed=[];S.hardMode=false;S.scnWins=0;
+ S.dailyLast="";S.dailyStreak=0;S.dailyKey="";S.dailySet=null;S.dailyPicks=null;S.dailyChecked=false;S.dailyMsg="";
  S.quizSet=null;S.quizIdx=0;S.quizPicks=[];S.quizDone=false;S.labProg={};S.inputs={};S.revealed=[];
  S.selectedLab=null;S.selectedCampaign=null;S.diffFilter="All";S.scnCur=null;S.scnPicks=[null,null];S.scnDone=false;S.board=[];S.levelUp="";
  try{localStorage.removeItem(SAVE_KEY);}catch(e){}
@@ -462,6 +480,92 @@ function sideVar(s){return s==="red"?"--dng":"--acc";}
 function sideSub(s){return s==="red"?"--dngsub":"--accsub";}
 function fb(text,tone){if(!text)return "";return '<div class="fb '+(tone||"")+'">'+esc(text)+'</div>';}
 
+function utcDay(d){
+ var m=String(d.getUTCMonth()+1),day=String(d.getUTCDate());
+ if(m.length<2)m="0"+m;if(day.length<2)day="0"+day;
+ return d.getUTCFullYear()+"-"+m+"-"+day;
+}
+function prevUtcDay(key){
+ var p=key.split("-");
+ var dt=new Date(Date.UTC(+p[0],+p[1]-1,+p[2]));
+ dt.setUTCDate(dt.getUTCDate()-1);
+ return utcDay(dt);
+}
+function hashSeed(s){
+ var h=2166136261;
+ for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+ return h>>>0;
+}
+function mulberry32(a){
+ return function(){
+  a|=0;a=a+0x6D2B79F5|0;
+  var t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296;
+ };
+}
+function dailyQuestions(key){
+ var rng=mulberry32(hashSeed("cyberrange-daily-"+key));
+ var idx=[];
+ for(var i=0;i<DATA.quiz.length;i++)idx.push(i);
+ for(var j=idx.length-1;j>0;j--){var k=Math.floor(rng()*(j+1));var t=idx[j];idx[j]=idx[k];idx[k]=t;}
+ return idx.slice(0,5);
+}
+function ensureDaily(){
+ var key=utcDay(new Date());
+ if(S.dailyKey!==key||!S.dailySet){
+  S.dailyKey=key;S.dailySet=dailyQuestions(key);S.dailyPicks=[null,null,null,null,null];S.dailyChecked=false;S.dailyMsg="";
+ }
+}
+function dailyReward(){
+ ensureDaily();
+ var cont=S.dailyLast===prevUtcDay(S.dailyKey);
+ var streak=(cont?S.dailyStreak:0)+1;
+ return Math.round((40+10*streak)*hm());
+}
+function submitDaily(){
+ ensureDaily();
+ if(S.dailyLast===S.dailyKey)return;
+ var missing=false;
+ for(var i=0;i<5;i++){if(S.dailyPicks[i]===null)missing=true;}
+ if(missing){S.dailyMsg="Answer all five questions, then submit.";S.dailyChecked=false;render();return;}
+ var correct=0;
+ S.dailySet.forEach(function(qi,pos){if(S.dailyPicks[pos]===DATA.quiz[qi].correct)correct++;});
+ if(correct<5){S.dailyChecked=true;S.dailyMsg="You have "+correct+" of 5. Correct the misses and submit again. XP is awarded only for a clear set.";render();return;}
+ var continued=S.dailyLast===prevUtcDay(S.dailyKey);
+ S.dailyStreak=continued?S.dailyStreak+1:1;
+ S.dailyLast=S.dailyKey;
+ S.dailyChecked=false;S.dailyMsg="";
+ award(Math.round((40+10*S.dailyStreak)*hm()),"Daily challenge - streak "+S.dailyStreak,"");
+ render();
+}
+function viewDaily(){
+ ensureDaily();
+ var done=S.dailyLast===S.dailyKey;
+ var html='<div class="card"><h2>Daily challenge</h2><p class="sec" style="margin-top:8px">Five questions for UTC '+esc(S.dailyKey)+', chosen from the placement quiz. Clear all five once today for '+dailyReward()+' XP. A streak grows only if you also cleared yesterday. Hard mode multiplies that reward.</p>';
+ html+='<p class="muted" style="margin-top:8px">Current streak: '+S.dailyStreak+' day'+(S.dailyStreak===1?"":"s")+'.</p></div>';
+ if(done){
+  html+='<div class="card" style="background:var(--sucsub);border-color:var(--suc)"><h3 style="color:var(--suc)">Cleared for '+esc(S.dailyKey)+'</h3><p class="sec" style="margin-top:8px">Come back after 00:00 UTC for a new set. This clear is saved with your progress.</p></div>';
+  return html;
+ }
+ html+=S.dailySet.map(function(qi,pos){
+  var q=DATA.quiz[qi];var picked=S.dailyPicks[pos];var show=S.dailyChecked&&picked!==null;
+  var h='<div class="card"><div class="row" style="justify-content:space-between"><span class="muted">Question '+(pos+1)+' of 5</span><div class="row">'+chip(q.topic,"--tx2","--sub")+chip(q.diff,diffVar(q.diff),"--sub")+'</div></div>';
+  h+='<h3 style="margin-top:14px">'+esc(q.q)+'</h3><div style="margin-top:12px">';
+  h+=q.options.map(function(opt,i){
+   var cls="opt";
+   if(show){if(i===q.correct)cls+=" ok";else if(i===picked)cls+=" err";else cls+=" dim";}
+   return '<button class="'+cls+'" data-action="daily-pick" data-pos="'+pos+'" data-opt="'+i+'"'+(i===picked&&!show?' style="border-color:var(--acc)"':"")+'>'+esc(opt)+'</button>';
+  }).join("");
+  h+='</div>';
+  if(show)h+='<div style="margin-top:12px">'+fb((picked===q.correct?"Correct. ":"Not quite. ")+q.explain,picked===q.correct?"ok":"err")+'</div>';
+  h+='</div>';
+  return h;
+ }).join("");
+ html+='<div class="row"><button class="btn primary" data-action="daily-submit">Submit daily challenge</button></div>';
+ if(S.dailyMsg)html+=fb(S.dailyMsg,S.dailyChecked?"err":"");
+ return html;
+}
 function leaderboardRows(){
  var youName=(S.name||"").replace(/\s+/g," ").trim()||"Operator";
  var rows=DATA.rivals.map(function(r){return {name:r.name,xp:r.xp,labs:r.labs,you:false,rank:rankFor(r.xp).name};});
@@ -480,7 +584,7 @@ function viewLeaderboard(){
  return html;
 }
 function renderNav(){
- var tabs=[["home","Home / Profile"],["ladder","Leaderboard"],["quiz","Placement Quiz"],["red","Red Team"],["blue","Blue Team"],["scenario","Live Scenario"],["campaigns","Campaigns"]];
+ var tabs=[["home","Home / Profile"],["ladder","Leaderboard"],["daily","Daily"],["quiz","Placement Quiz"],["red","Red Team"],["blue","Blue Team"],["scenario","Live Scenario"],["campaigns","Campaigns"]];
  document.getElementById("nav").innerHTML=tabs.map(function(t){return '<button class="btn'+(S.tab===t[0]?" active":"")+'" data-action="tab" data-tab="'+t[0]+'">'+t[1]+'</button>';}).join("");
 }
 function renderLevelUp(){
@@ -512,7 +616,7 @@ function viewHome(){
  else html+='<div class="col" style="gap:6px;margin-top:10px">'+S.board.map(function(e){return '<div class="row" style="justify-content:space-between"><span class="sec">'+esc(e.label)+'</span><span style="font-family:var(--mono);color:var('+(e.xp>=0?"--suc":"--dng")+')">'+(e.xp>=0?"+":"")+e.xp+' XP</span></div>';}).join("")+'</div>';
  html+='</div>';
  html+='<div class="card" style="background:var(--wrnsub);border-color:var(--wrn)"><h3 style="color:var(--wrn)">Ethics and safety</h3><p class="sec" style="margin-top:6px">Everything here is simulated against fictional targets and reserved IP ranges (10.x, 192.0.2.x, 198.51.100.x, 203.0.113.x) and example domains. Only ever test systems you own or have written permission to test. Unauthorized hacking is illegal.</p><p class="sec" style="margin-top:6px">Practice legally on: TryHackMe, Hack The Box, PortSwigger Web Security Academy, OverTheWire.</p></div>';
- html+='<div class="card"><h3>Backup progress</h3><p class="sec" style="margin-top:6px">Download a JSON file of the progress saved in this browser, or restore a file you saved earlier. Import replaces the progress on this device. The file is only read as data and is never run.</p>';
+ html+='<div class="card"><h3>Backup progress</h3><p class="sec" style="margin-top:6px">Download a JSON file of the progress saved in this browser, or restore a file you saved earlier. Import replaces the progress on this device, including the daily streak. The file is only read as data and is never run. Older backups without a daily streak still import.</p>';
  html+='<div class="row" style="margin-top:12px"><button class="btn" data-action="export-progress">Export progress</button><button class="btn" data-action="pick-import">Import progress</button>';
  html+='<input type="file" id="import-file" accept="application/json,.json" data-import="1" tabindex="-1" aria-hidden="true" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0"></div>';
  if(S.notice)html+='<div style="margin-top:12px">'+fb(S.notice.text,S.notice.tone)+'</div>';
@@ -644,6 +748,7 @@ function render(){
  var c=document.getElementById("content");
  if(S.tab==="home")c.innerHTML=viewHome();
  else if(S.tab==="ladder")c.innerHTML=viewLeaderboard();
+ else if(S.tab==="daily")c.innerHTML=viewDaily();
  else if(S.tab==="quiz")c.innerHTML=viewQuiz();
  else if(S.tab==="red")c.innerHTML=viewSide("red");
  else if(S.tab==="blue")c.innerHTML=viewSide("blue");
@@ -675,6 +780,8 @@ document.addEventListener("click",function(e){
  else if(a==="quiz-prev"){S.quizIdx=Math.max(0,S.quizIdx-1);render();}
  else if(a==="quiz-finish"){finishQuiz();}
  else if(a==="quiz-retake"){startQuiz();render();}
+ else if(a==="daily-pick"){ensureDaily();if(S.dailyLast===S.dailyKey)return;var dpos=parseInt(t.getAttribute("data-pos"),10);S.dailyPicks[dpos]=parseInt(t.getAttribute("data-opt"),10);render();}
+ else if(a==="daily-submit"){submitDaily();}
  else if(a==="scn-gen"){generateScenario();}
  else if(a==="scn-pick"){answerScn(parseInt(t.getAttribute("data-qi"),10),parseInt(t.getAttribute("data-oi"),10));}
 });

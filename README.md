@@ -6,6 +6,8 @@ From Home / Profile you can export that progress to a JSON file and import it la
 
 The Leaderboard compares that saved XP with fictional classmates. It stays on this device and does not upload scores.
 
+Daily is five questions from the existing quiz, fixed for the UTC date. Clearing them once that day raises a streak. The date and streak are part of the progress backup. Older backup files that have no streak still import.
+
 **Live site:** https://ella1536von-ops.github.io/ellathehackervon/
 
 ## Add it to an Android home screen

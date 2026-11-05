@@ -50,6 +50,11 @@ input[type=text]{font-family:inherit;font-size:15px;color:var(--tx);background:v
 .sw.on{background:var(--acc)}
 .sw>span{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.15s}
 .sw.on>span{left:18px}
+table.lb{width:100%;border-collapse:collapse;font-size:14px}
+table.lb th{color:var(--tx3);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+table.lb th,table.lb td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd2)}
+table.lb tr.you td{background:var(--accsub)}
+table.lb td.num{font-family:var(--mono);text-align:right}
 </style>
 </head>
 <body>
@@ -231,7 +236,16 @@ questions:[
 {question:"Red objective: you have a foothold. What is the best FIRST move?",options:["Run reconnaissance and map the target before acting","Immediately wipe all logs and disconnect","Email the CEO demanding a ransom"],correct:0},
 {question:"Blue objective: the alert just fired. What should the defender do FIRST?",options:["Isolate the affected host while preserving evidence","Pay the attacker to make it stop","Wait until Monday to look"],correct:0}
 ]
-}
+},
+rivals:[
+{name:"Quinn Adler",xp:2450,labs:18},
+{name:"Samir Okonkwo",xp:1800,labs:14},
+{name:"Priya Nandakumar",xp:1100,labs:11},
+{name:"Elena Voss",xp:700,labs:8},
+{name:"Chris Dalton",xp:400,labs:5},
+{name:"Noah Pell",xp:180,labs:3},
+{name:"Jamie Frost",xp:40,labs:1}
+]
 };
 /* ---------- helpers ---------- */
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -448,8 +462,25 @@ function sideVar(s){return s==="red"?"--dng":"--acc";}
 function sideSub(s){return s==="red"?"--dngsub":"--accsub";}
 function fb(text,tone){if(!text)return "";return '<div class="fb '+(tone||"")+'">'+esc(text)+'</div>';}
 
+function leaderboardRows(){
+ var youName=(S.name||"").replace(/\s+/g," ").trim()||"Operator";
+ var rows=DATA.rivals.map(function(r){return {name:r.name,xp:r.xp,labs:r.labs,you:false,rank:rankFor(r.xp).name};});
+ rows.push({name:youName,xp:S.xp,labs:S.completed.length,you:true,rank:rankFor(S.xp).name});
+ rows.sort(function(a,b){if(b.xp!==a.xp)return b.xp-a.xp;if(a.you!==b.you)return a.you?-1:1;if(a.name<b.name)return -1;if(a.name>b.name)return 1;return 0;});
+ return rows;
+}
+function viewLeaderboard(){
+ var rows=leaderboardRows();
+ var place=0;
+ rows.forEach(function(r,i){if(r.you)place=i+1;});
+ var html='<div class="card"><h2>Leaderboard</h2><p class="sec" style="margin-top:8px">Your row is the progress saved in this browser. The other operators are fictional classmates built into the app, so the board works offline and nothing is uploaded.</p><p class="muted" style="margin-top:8px">You are #'+place+' of '+rows.length+' with '+S.xp+' XP.</p></div>';
+ html+='<div class="card" style="overflow-x:auto"><table class="lb"><thead><tr><th>#</th><th>Operator</th><th>Rank</th><th class="num">XP</th><th class="num">Labs</th></tr></thead><tbody>';
+ html+=rows.map(function(r,i){return '<tr'+(r.you?' class="you"':'')+'><td>'+(i+1)+'</td><td>'+esc(r.name)+(r.you?' '+chip("You","--acc","--accsub"):"")+'</td><td>'+esc(r.rank)+'</td><td class="num">'+r.xp+'</td><td class="num">'+r.labs+'</td></tr>';}).join("");
+ html+='</tbody></table></div>';
+ return html;
+}
 function renderNav(){
- var tabs=[["home","Home / Profile"],["quiz","Placement Quiz"],["red","Red Team"],["blue","Blue Team"],["scenario","Live Scenario"],["campaigns","Campaigns"]];
+ var tabs=[["home","Home / Profile"],["ladder","Leaderboard"],["quiz","Placement Quiz"],["red","Red Team"],["blue","Blue Team"],["scenario","Live Scenario"],["campaigns","Campaigns"]];
  document.getElementById("nav").innerHTML=tabs.map(function(t){return '<button class="btn'+(S.tab===t[0]?" active":"")+'" data-action="tab" data-tab="'+t[0]+'">'+t[1]+'</button>';}).join("");
 }
 function renderLevelUp(){
@@ -612,6 +643,7 @@ function render(){
  renderLevelUp();
  var c=document.getElementById("content");
  if(S.tab==="home")c.innerHTML=viewHome();
+ else if(S.tab==="ladder")c.innerHTML=viewLeaderboard();
  else if(S.tab==="quiz")c.innerHTML=viewQuiz();
  else if(S.tab==="red")c.innerHTML=viewSide("red");
  else if(S.tab==="blue")c.innerHTML=viewSide("blue");

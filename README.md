@@ -4,6 +4,8 @@ CyberRange Academy is a self-contained cybersecurity training game that runs in 
 
 From Home / Profile you can export that progress to a JSON file and import it later, including on another browser or an installed copy, so a backup survives clearing browser data.
 
+The Leaderboard compares that saved XP with fictional classmates. It stays on this device and does not upload scores.
+
 **Live site:** https://ella1536von-ops.github.io/ellathehackervon/
 
 ## Add it to an Android home screen

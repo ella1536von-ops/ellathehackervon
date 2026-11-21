@@ -12,6 +12,8 @@ ATT&CK maps each lab to one public MITRE ATT&CK Enterprise technique. Red labs p
 
 THM mode, on Home / Profile, presents those same labs as rooms: a suggested path, numbered tasks, and a completion flag. It does not change the questions or the scoring, and it is not affiliated with TryHackMe. The switch is included in the progress backup.
 
+SOC Analyst is a simulated L1 shift: an alert queue, searchable logs, phishing triage, and a 5 Ws case report scored against an answer key. Closing a case awards blue XP. Those case ids sit in the same completed list as labs, so an Export/Import backup includes them.
+
 **Live site:** https://ella1536von-ops.github.io/ellathehackervon/
 
 ## Add it to an Android home screen
